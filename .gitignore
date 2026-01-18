@@ -1,0 +1,15 @@
+# Virtual environment
+venv/
+
+# Environment variables
+.env
+
+# Uploads
+uploads/
+
+# Python cache
+__pycache__/
+*.pyc
+
+# OS
+.DS_Store
