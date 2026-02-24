@@ -1,7 +1,10 @@
 from fastapi import FastAPI
-from apps.api.routes import upload, jobs, results
+from app.api.routes import upload, jobs, results
+from app.api.db.session import engine, Base
+from app.api.models import models
 
 app = FastAPI(title="VeriSight API")
+Base.metadata.create_all(bind=engine)
 
 @app.get("/")
 def root():
