@@ -1,8 +1,0 @@
-DB_USER=root
-DB_PASSWORD=your_mysql_password
-DB_HOST=localhost
-DB_PORT=3306
-DB_NAME=verisight
-
-REDIS_URL=redis://localhost:6379
-UPLOAD_DIR=uploads

@@ -2,10 +2,14 @@ from fastapi import FastAPI
 from app.api.routes import upload, jobs, results
 from app.api.db.session import engine, Base
 from app.api.models import models
-
+from app.api.result_listener import start_listener
 app = FastAPI(title="VeriSight API")
 Base.metadata.create_all(bind=engine)
 
+@app.on_event("startup")
+def startup_event():
+    start_listener()
+    
 @app.get("/")
 def root():
     return {"message": "VeriSight API running"}
