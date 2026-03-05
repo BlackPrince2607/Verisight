@@ -1,12 +1,23 @@
 import asyncio
 import json
+import httpx
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from inference_service import stream_analysis_loop
+from app.api.core.redis_client import redis_client
 
 router = APIRouter()
 
-# Global state — one stream at a time
+INFERENCE_SERVICE_URL = "http://localhost:8001"
+
 current_stop_event: asyncio.Event | None = None
+
+
+async def _notify_inference_stop():
+    """Tell inference service to stop the current stream."""
+    try:
+        async with httpx.AsyncClient() as client:
+            await client.post(f"{INFERENCE_SERVICE_URL}/stream/stop", timeout=5)
+    except Exception as e:
+        print(f"[STREAM] Could not notify inference service to stop: {e}")
 
 
 @router.websocket("/ws/stream")
@@ -16,9 +27,10 @@ async def stream_detection(websocket: WebSocket):
     await websocket.accept()
     print("[WS] Stream client connected")
 
-    # Stop any existing stream
+    # Stop any existing stream before starting a new one
     if current_stop_event:
         current_stop_event.set()
+        await _notify_inference_stop()
 
     stop_event = asyncio.Event()
     current_stop_event = stop_event
@@ -27,58 +39,76 @@ async def stream_detection(websocket: WebSocket):
         try:
             await websocket.send_text(json.dumps(payload))
         except Exception:
-            pass  # client disconnected mid-send
+            pass
 
     try:
-        # First message must be the stream URL
+        # Wait for start message
         init = await websocket.receive_text()
-        message = json.loads(init)
+        start_message = json.loads(init)
 
-        if message.get("type") != "start" or not message.get("url"):
-            await send({"type": "error", "message": "Send {type: 'start', url: '...'} to begin"})
+        if start_message.get("type") != "start" or not start_message.get("url"):
+            await send({
+                "type": "error",
+                "message": "First message must be {type: 'start', url: '...'}"
+            })
             return
 
-        url = message["url"].strip()
-        stream_type = _detect_stream_type(url)
-        await send({"type": "status", "message": f"Starting {stream_type} stream analysis..."})
+        url = start_message["url"].strip()
 
-        # Run the analysis loop as a background task
-        # so we can also listen for stop messages
-        analysis_task = asyncio.create_task(
-            stream_analysis_loop(url, send, stop_event)
-        )
+        # Tell inference service to start
+        try:
+            async with httpx.AsyncClient() as client:
+                resp = await client.post(
+                    f"{INFERENCE_SERVICE_URL}/stream/start",
+                    json={"url": url},
+                    timeout=10
+                )
+                if resp.status_code != 200:
+                    await send({"type": "error", "message": "Inference service rejected the request"})
+                    return
+        except httpx.ConnectError:
+            await send({"type": "error", "message": "Cannot reach inference service — is it running on port 8001?"})
+            return
+        except httpx.TimeoutException:
+            await send({"type": "error", "message": "Inference service timed out"})
+            return
 
-        # Listen for stop message from client
+        await send({"type": "status", "message": f"Stream started. Analyzing..."})
+
+        # Read results from Redis → forward to browser
+        loop = asyncio.get_running_loop()   # ✅ correct for 3.10+
+
         while not stop_event.is_set():
             try:
-                msg = await asyncio.wait_for(websocket.receive_text(), timeout=1.0)
-                data = json.loads(msg)
-                if data.get("type") == "stop":
-                    stop_event.set()
-                    break
-            except asyncio.TimeoutError:
-                continue  # no message yet, keep looping
-            except Exception:
-                break
+                result_data = await loop.run_in_executor(
+                    None,
+                    lambda: redis_client.brpop("stream_results", timeout=2)
+                )
 
-        stop_event.set()
-        await analysis_task
+                if result_data:
+                    _, result_str = result_data
+                    payload = json.loads(result_str)
+                    await send(payload)
+
+            except json.JSONDecodeError as e:
+                print(f"[STREAM] Bad JSON from Redis: {e}")
+            except Exception as e:
+                print(f"[STREAM] Redis read error: {e}")
+                await asyncio.sleep(1)  # brief pause before retrying
+
+        # Graceful stop
+        await _notify_inference_stop()
+        print("[WS] Stream stopped cleanly")
 
     except WebSocketDisconnect:
-        print("[WS] Stream client disconnected")
+        print("[WS] Client disconnected abruptly")
         stop_event.set()
+        await _notify_inference_stop()   # ✅ always stop inference on disconnect
+
+    except json.JSONDecodeError:
+        await send({"type": "error", "message": "Invalid JSON in start message"})
+
     except Exception as e:
-        print(f"[WS] Stream error: {e}")
+        print(f"[WS] Unexpected error: {e}")
         stop_event.set()
-
-
-def _detect_stream_type(url: str) -> str:
-    if "youtube.com" in url or "youtu.be" in url:
-        return "YouTube"
-    if url.startswith("rtmp://"):
-        return "RTMP"
-    if url.startswith("rtsp://"):
-        return "RTSP / IP Camera"
-    if url.endswith(".m3u8"):
-        return "HLS"
-    return "HTTP"
+        await _notify_inference_stop()
