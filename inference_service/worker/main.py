@@ -3,7 +3,8 @@ import redis
 import json
 import torch
 from transformers import AutoImageProcessor, AutoModelForImageClassification
-from PIL import Image
+from PIL import Image, UnidentifiedImageError
+import os
 
 redis_client = redis.Redis(
     host="localhost",
@@ -14,22 +15,26 @@ redis_client = redis.Redis(
 
 QUEUE_NAME = "analysis_jobs"
 RESULT_QUEUE = "analysis_results"
-
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_NAME = "dima806/deepfake_vs_real_image_detection"
+MODEL_NAME = "prithivMLmods/Deep-Fake-Detector-Model"
 
-print("Loading model...")
-
+print(f"Loading model on {DEVICE}...")
 processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
 model = AutoModelForImageClassification.from_pretrained(MODEL_NAME)
 model.to(DEVICE)
 model.eval()
-
-print("Model loaded on", DEVICE)
+print("Model ready.")
 
 
 def run_inference(file_path):
-    image = Image.open(file_path).convert("RGB")
+    file_path = os.path.abspath(file_path)
+    
+    if not os.path.exists(file_path):
+        raise ValueError(f"File not found: {file_path}")
+    try:
+        image = Image.open(file_path).convert("RGB")
+    except (FileNotFoundError, UnidentifiedImageError) as e:
+        raise ValueError(f"Could not load image at {file_path}: {e}")
 
     inputs = processor(images=image, return_tensors="pt")
     inputs = {k: v.to(DEVICE) for k, v in inputs.items()}
@@ -37,35 +42,33 @@ def run_inference(file_path):
     with torch.no_grad():
         outputs = model(**inputs)
 
-    logits = outputs.logits
-    probabilities = torch.nn.functional.softmax(logits, dim=1)
-
+    probabilities = torch.nn.functional.softmax(outputs.logits, dim=1)
     confidence, predicted_class = torch.max(probabilities, dim=1)
     label = model.config.id2label[predicted_class.item()]
 
-    return label, float(confidence.item())
+    return label, round(float(confidence.item()), 4)
 
 
 def start_inference_service():
-    print("Inference Service Started. Waiting for jobs...")
+    print("Inference worker started. Waiting for jobs...")
 
     while True:
-        job_data = redis_client.brpop(QUEUE_NAME)
+        try:
+            job_data = redis_client.brpop(QUEUE_NAME, timeout=5)
+            if not job_data:
+                continue
 
-        if job_data:
             _, message = job_data
             job_message = json.loads(message)
-
             job_id = job_message["job_id"]
             file_path = job_message["file_path"]
 
+            print(f"[JOB] Processing {job_id}")
+            start_time = time.time()
+
             try:
-                start_time = time.time()
-
                 label, confidence = run_inference(file_path)
-
                 inference_time = int((time.time() - start_time) * 1000)
-
                 result_message = {
                     "job_id": job_id,
                     "status": "completed",
@@ -73,8 +76,10 @@ def start_inference_service():
                     "confidence": confidence,
                     "inference_time_ms": inference_time
                 }
+                print(f"[DONE] {job_id} → {label} ({confidence}) in {inference_time}ms")
 
             except Exception as e:
+                print(f"[FAIL] Inference failed for {job_id}: {e}")
                 result_message = {
                     "job_id": job_id,
                     "status": "failed",
@@ -84,6 +89,14 @@ def start_inference_service():
                 }
 
             redis_client.lpush(RESULT_QUEUE, json.dumps(result_message))
+
+        except json.JSONDecodeError as e:
+            print(f"[ERROR] Bad job JSON: {e}")
+        except redis.RedisError as e:
+            print(f"[ERROR] Redis connection issue: {e}. Retrying in 3s...")
+            time.sleep(3)
+        except Exception as e:
+            print(f"[ERROR] Unexpected error: {e}")
 
 
 if __name__ == "__main__":

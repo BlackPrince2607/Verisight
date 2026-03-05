@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <title>VeriSight — Live Stream Detection</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: #0a0a0f;
+      color: #e8e8f0;
+      font-family: monospace;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+    }
+    h1 { font-size: 1.8rem; letter-spacing: 0.1em; margin-bottom: 4px; }
+    .sub { color: #555570; font-size: 0.8rem; margin-bottom: 28px; }
+
+    .url-bar {
+      display: flex;
+      gap: 10px;
+      width: 640px;
+      margin-bottom: 16px;
+    }
+    input {
+      flex: 1;
+      background: #13131d;
+      border: 1px solid #1e1e2e;
+      border-radius: 4px;
+      color: #e8e8f0;
+      font-family: monospace;
+      font-size: 0.85rem;
+      padding: 10px 14px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    input:focus { border-color: #00f5a0; }
+    input::placeholder { color: #333355; }
+
+    button {
+      padding: 10px 20px;
+      border: 1px solid #1e1e2e;
+      border-radius: 4px;
+      background: #13131d;
+      color: #e8e8f0;
+      font-family: monospace;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+      white-space: nowrap;
+    }
+    button:hover:not(:disabled) { border-color: #00f5a0; color: #00f5a0; }
+    button:disabled { opacity: 0.3; cursor: not-allowed; }
+    button.danger:hover:not(:disabled) { border-color: #ff4060; color: #ff4060; }
+
+    /* Feed */
+    .feed {
+      position: relative;
+      width: 640px;
+      height: 400px;
+      background: #111;
+      border: 1px solid #1e1e2e;
+      border-radius: 6px;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #stream-frame {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: none;
+    }
+    .placeholder {
+      color: #333355;
+      font-size: 0.85rem;
+      text-align: center;
+      line-height: 2;
+    }
+
+    /* Verdict overlay */
+    .verdict-overlay {
+      position: absolute;
+      top: 14px; left: 14px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .verdict-badge {
+      padding: 6px 16px;
+      border-radius: 4px;
+      font-size: 1rem;
+      font-weight: bold;
+      letter-spacing: 0.12em;
+      transition: all 0.3s;
+    }
+    .verdict-badge.FAKE { background: rgba(255,64,96,0.9); color: white; }
+    .verdict-badge.REAL { background: rgba(0,245,160,0.9); color: #0a0a0f; }
+    .verdict-badge.WARMUP { background: rgba(80,80,120,0.9); color: white; }
+
+    .conf-badge {
+      background: rgba(0,0,0,0.6);
+      padding: 6px 12px;
+      border-radius: 4px;
+      font-size: 0.85rem;
+      color: #e8e8f0;
+    }
+
+    /* Confidence bar */
+    .bar-wrap {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 4px;
+      background: rgba(255,255,255,0.05);
+    }
+    .bar-fill {
+      height: 100%;
+      transition: width 0.4s ease, background 0.4s ease;
+    }
+
+    /* Stats */
+    .stats {
+      width: 640px;
+      margin-top: 14px;
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+    }
+    .stat {
+      background: #13131d;
+      border: 1px solid #1e1e2e;
+      border-radius: 4px;
+      padding: 12px;
+      text-align: center;
+    }
+    .stat-val { font-size: 1.1rem; font-weight: bold; color: #00f5a0; }
+    .stat-label { font-size: 0.65rem; color: #555570; margin-top: 4px; letter-spacing: 0.05em; }
+
+    /* Log */
+    #log {
+      width: 640px;
+      margin-top: 14px;
+      background: #13131d;
+      border: 1px solid #1e1e2e;
+      border-radius: 4px;
+      padding: 12px;
+      font-size: 0.72rem;
+      color: #555570;
+      height: 110px;
+      overflow-y: auto;
+    }
+    #log .err { color: #ff4060; }
+    #log .ok  { color: #00f5a0; }
+
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .live-dot {
+      display: inline-block;
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #ff4060;
+      animation: pulse 1s infinite;
+      margin-right: 6px;
+    }
+  </style>
+</head>
+<body>
+  <h1>VERI<span style="color:#00f5a0">SIGHT</span></h1>
+  <p class="sub">Live Stream Deepfake Detection</p>
+
+  <div class="url-bar">
+    <input id="url-input" type="text"
+      placeholder="YouTube URL / rtmp://... / rtsp://192.168.x.x / http://...m3u8"/>
+    <button id="btn-start">▶ Analyze</button>
+    <button id="btn-stop" class="danger" disabled>■ Stop</button>
+  </div>
+
+  <div class="feed">
+    <img id="stream-frame" alt="stream"/>
+    <div class="placeholder" id="placeholder">
+      Paste a stream URL above<br/>
+      <span style="color:#222240">YouTube · RTMP · RTSP · HLS</span>
+    </div>
+    <div class="verdict-overlay">
+      <div class="verdict-badge WARMUP" id="verdict" style="display:none">WARMING UP</div>
+      <div class="conf-badge" id="conf-badge" style="display:none">—</div>
+    </div>
+    <div class="bar-wrap">
+      <div class="bar-fill" id="bar" style="width:0%;background:#333355"></div>
+    </div>
+  </div>
+
+  <div class="stats">
+    <div class="stat">
+      <div class="stat-val" id="s-verdict">—</div>
+      <div class="stat-label">VERDICT</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="s-conf">—</div>
+      <div class="stat-label">CONFIDENCE</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="s-fake-ratio">—</div>
+      <div class="stat-label">FAKE RATIO</div>
+    </div>
+    <div class="stat">
+      <div class="stat-val" id="s-frames">0</div>
+      <div class="stat-label">FRAMES ANALYZED</div>
+    </div>
+  </div>
+
+  <div id="log">// waiting for stream...</div>
+
+  <script>
+    const urlInput   = document.getElementById("url-input");
+    const btnStart   = document.getElementById("btn-start");
+    const btnStop    = document.getElementById("btn-stop");
+    const frameImg   = document.getElementById("stream-frame");
+    const placeholder= document.getElementById("placeholder");
+    const verdictEl  = document.getElementById("verdict");
+    const confBadge  = document.getElementById("conf-badge");
+    const barEl      = document.getElementById("bar");
+    const logEl      = document.getElementById("log");
+
+    let ws = null;
+
+    function log(msg, cls = "") {
+      const line = document.createElement("div");
+      if (cls) line.className = cls;
+      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+      logEl.appendChild(line);
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function updateUI(data) {
+      const { verdict, confidence, fake_ratio } = data.smoothed;
+      const pct = Math.round(confidence * 100);
+      const fakeRatioPct = Math.round((fake_ratio || 0) * 100);
+
+      // Frame snapshot
+      if (data.frame) {
+        frameImg.src = data.frame;
+        frameImg.style.display = "block";
+        placeholder.style.display = "none";
+      }
+
+      // Verdict badge
+      verdictEl.style.display = "block";
+      confBadge.style.display = "block";
+      verdictEl.textContent = verdict;
+      verdictEl.className = "verdict-badge " + (
+        verdict === "FAKE" ? "FAKE" :
+        verdict === "REAL" ? "REAL" : "WARMUP"
+      );
+      confBadge.textContent = `${pct}% confident`;
+
+      // Bar
+      barEl.style.width = `${pct}%`;
+      barEl.style.background = verdict === "FAKE" ? "#ff4060" : "#00f5a0";
+
+      // Stats
+      document.getElementById("s-verdict").textContent = verdict;
+      document.getElementById("s-verdict").style.color =
+        verdict === "FAKE" ? "#ff4060" : "#00f5a0";
+      document.getElementById("s-conf").textContent = `${pct}%`;
+      document.getElementById("s-fake-ratio").textContent = `${fakeRatioPct}%`;
+      document.getElementById("s-frames").textContent = data.frames_analyzed;
+    }
+
+    function startStream() {
+      const url = urlInput.value.trim();
+      if (!url) { log("Please enter a stream URL", "err"); return; }
+
+      ws = new WebSocket(`ws://${window.location.host}/ws/stream`);
+
+      ws.onopen = () => {
+        log(`Connecting to stream: ${url}`, "ok");
+        ws.send(JSON.stringify({ type: "start", url }));
+        btnStart.disabled = true;
+        btnStop.disabled = false;
+        urlInput.disabled = true;
+      };
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if (data.type === "result") {
+          updateUI(data);
+          log(`${data.smoothed.verdict} — ${Math.round(data.smoothed.confidence*100)}% (raw: ${data.raw.label} ${Math.round(data.raw.confidence*100)}%)`);
+        } else if (data.type === "status") {
+          log(data.message, "ok");
+        } else if (data.type === "error") {
+          log(`ERROR: ${data.message}`, "err");
+        }
+      };
+
+      ws.onclose = () => {
+        log("Stream disconnected");
+        resetUI();
+      };
+
+      ws.onerror = () => {
+        log("WebSocket error", "err");
+        resetUI();
+      };
+    }
+
+    function stopStream() {
+      if (ws) {
+        ws.send(JSON.stringify({ type: "stop" }));
+        ws.close();
+      }
+      resetUI();
+      log("Stream stopped");
+    }
+
+    function resetUI() {
+      btnStart.disabled = false;
+      btnStop.disabled = true;
+      urlInput.disabled = false;
+    }
+
+    btnStart.addEventListener("click", startStream);
+    btnStop.addEventListener("click", stopStream);
+
+    // Allow Enter key to start
+    urlInput.addEventListener("keydown", e => {
+      if (e.key === "Enter") startStream();
+    });
+  </script>
+</body>
+</html>

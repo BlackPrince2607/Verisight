@@ -1,0 +1,866 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VeriSight — Deepfake Detection System</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Epilogue:wght@300;400;700;900&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:       #070709;
+  --surface:  #0e0e13;
+  --card:     #12121a;
+  --border:   #1c1c28;
+  --border2:  #252535;
+  --accent:   #00e5ff;
+  --green:    #00ff88;
+  --red:      #ff3355;
+  --yellow:   #ffcc00;
+  --text:     #ddddf0;
+  --muted:    #44445a;
+  --muted2:   #666680;
+  --font-mono: 'IBM Plex Mono', monospace;
+  --font-display: 'Epilogue', sans-serif;
+}
+
+*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-display);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ─── GRAIN ─── */
+body::after {
+  content:'';
+  position:fixed; inset:0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
+  pointer-events:none; z-index:9999;
+}
+
+/* ─── SCAN LINE ─── */
+body::before {
+  content:'';
+  position:fixed; inset:0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(0,229,255,0.012) 2px,
+    rgba(0,229,255,0.012) 4px
+  );
+  pointer-events:none; z-index:9998;
+}
+
+/* ─── GLOW ─── */
+.glow-orb {
+  position:fixed;
+  border-radius:50%;
+  filter:blur(120px);
+  pointer-events:none;
+  z-index:0;
+}
+.glow-1 { width:500px;height:500px; top:-150px;left:-150px; background:rgba(0,229,255,0.04); animation: orbdrift 20s ease-in-out infinite alternate; }
+.glow-2 { width:400px;height:400px; bottom:-100px;right:-100px; background:rgba(0,255,136,0.035); animation: orbdrift2 25s ease-in-out infinite alternate; }
+@keyframes orbdrift  { to { transform: translate(80px,100px); } }
+@keyframes orbdrift2 { to { transform: translate(-60px,-80px); } }
+
+/* ─── LAYOUT ─── */
+.shell {
+  position:relative; z-index:1;
+  max-width:1100px;
+  margin:0 auto;
+  padding:0 28px 100px;
+}
+
+/* ─── HEADER ─── */
+header {
+  padding: 52px 0 44px;
+  border-bottom: 1px solid var(--border);
+  display:flex;
+  justify-content:space-between;
+  align-items:flex-end;
+  animation: fadeUp 0.7s ease both;
+}
+
+.logo {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.logo-eyebrow {
+  font-family: var(--font-mono);
+  font-size:10px;
+  letter-spacing:0.25em;
+  color: var(--muted2);
+  text-transform:uppercase;
+}
+
+.logo-name {
+  font-size: clamp(2.2rem, 5vw, 3.8rem);
+  font-weight:900;
+  letter-spacing:-0.04em;
+  line-height:1;
+}
+.logo-name .v { color: var(--accent); }
+.logo-name .s { color: var(--green); }
+
+.logo-sub {
+  font-family: var(--font-mono);
+  font-size:11px;
+  color: var(--muted);
+  margin-top:4px;
+}
+
+.header-right {
+  display:flex;
+  flex-direction:column;
+  align-items:flex-end;
+  gap:10px;
+}
+
+.stream-cta {
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:10px 20px;
+  border:1px solid var(--accent);
+  border-radius:3px;
+  color: var(--accent);
+  font-family: var(--font-mono);
+  font-size:11px;
+  letter-spacing:0.1em;
+  text-decoration:none;
+  text-transform:uppercase;
+  transition:all 0.2s;
+  position:relative;
+  overflow:hidden;
+}
+.stream-cta::before {
+  content:'';
+  position:absolute; inset:0;
+  background: var(--accent);
+  transform: translateX(-100%);
+  transition: transform 0.25s ease;
+}
+.stream-cta:hover::before { transform: translateX(0); }
+.stream-cta:hover { color: var(--bg); }
+.stream-cta span, .stream-cta svg { position:relative; z-index:1; }
+
+.pulse-dot {
+  width:7px; height:7px;
+  border-radius:50%;
+  background: var(--green);
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+
+/* ─── SECTION HEADER ─── */
+.section-head {
+  display:flex;
+  align-items:center;
+  gap:14px;
+  margin-bottom:24px;
+}
+.section-head h2 {
+  font-size:0.78rem;
+  font-family: var(--font-mono);
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color: var(--muted2);
+}
+.section-head::after {
+  content:'';
+  flex:1;
+  height:1px;
+  background: var(--border);
+}
+.section-num {
+  font-family: var(--font-mono);
+  font-size:10px;
+  color: var(--muted);
+  border:1px solid var(--border);
+  padding:2px 7px;
+  border-radius:2px;
+}
+
+/* ─── STATUS GRID ─── */
+section { margin-top:56px; animation: fadeUp 0.7s ease both; }
+section:nth-child(2){animation-delay:0.08s}
+section:nth-child(3){animation-delay:0.16s}
+section:nth-child(4){animation-delay:0.24s}
+
+.status-grid {
+  display:grid;
+  grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
+  gap:12px;
+}
+
+.status-card {
+  background: var(--card);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  transition:border-color 0.2s;
+  cursor:default;
+}
+.status-card:hover { border-color: var(--border2); }
+
+.sc-top {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.sc-label {
+  font-family: var(--font-mono);
+  font-size:10px;
+  letter-spacing:0.15em;
+  color: var(--muted);
+  text-transform:uppercase;
+}
+.sc-indicator {
+  width:8px; height:8px;
+  border-radius:50%;
+}
+.sc-indicator.ok    { background: var(--green); box-shadow:0 0 8px var(--green); }
+.sc-indicator.warn  { background: var(--yellow); box-shadow:0 0 8px var(--yellow); }
+.sc-indicator.error { background: var(--red); box-shadow:0 0 8px var(--red); }
+.sc-indicator.checking { background: var(--muted); animation:blink 1s infinite; }
+
+.sc-value {
+  font-size:1.5rem;
+  font-weight:700;
+  letter-spacing:-0.02em;
+  font-family: var(--font-mono);
+}
+.sc-value.green { color: var(--green); }
+.sc-value.red   { color: var(--red); }
+.sc-value.cyan  { color: var(--accent); }
+.sc-value.muted { color: var(--muted2); }
+
+.sc-sub {
+  font-size:0.7rem;
+  color: var(--muted);
+  font-family: var(--font-mono);
+}
+
+/* ─── UPLOAD ZONE ─── */
+.upload-layout {
+  display:grid;
+  grid-template-columns: 1fr 1fr;
+  gap:20px;
+}
+
+@media(max-width:680px){ .upload-layout { grid-template-columns:1fr; } }
+
+.drop-zone {
+  border:1px dashed var(--border2);
+  border-radius:4px;
+  padding:48px 24px;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  gap:14px;
+  cursor:pointer;
+  transition:all 0.25s;
+  background: var(--card);
+  text-align:center;
+  position:relative;
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--accent);
+  background: rgba(0,229,255,0.03);
+}
+.drop-zone input { position:absolute;inset:0;opacity:0;cursor:pointer; }
+
+.drop-icon {
+  width:48px; height:48px;
+  border:1px solid var(--border2);
+  border-radius:50%;
+  display:flex; align-items:center; justify-content:center;
+  font-size:1.4rem;
+  color: var(--muted2);
+  transition: all 0.25s;
+}
+.drop-zone:hover .drop-icon {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.drop-title {
+  font-size:0.9rem;
+  font-weight:700;
+}
+.drop-sub {
+  font-family: var(--font-mono);
+  font-size:10px;
+  color: var(--muted);
+  letter-spacing:0.1em;
+}
+
+/* Upload result panel */
+.upload-result {
+  background: var(--card);
+  border:1px solid var(--border);
+  border-radius:4px;
+  padding:24px;
+  display:flex;
+  flex-direction:column;
+  gap:16px;
+}
+
+.ur-title {
+  font-family: var(--font-mono);
+  font-size:10px;
+  letter-spacing:0.2em;
+  color: var(--muted);
+  text-transform:uppercase;
+}
+
+.ur-preview {
+  width:100%;
+  height:160px;
+  background: var(--surface);
+  border:1px solid var(--border);
+  border-radius:3px;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  color: var(--muted);
+  font-size:0.75rem;
+  font-family: var(--font-mono);
+}
+.ur-preview img {
+  width:100%; height:100%;
+  object-fit:cover;
+}
+
+.ur-status {
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+
+.status-row {
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  font-family: var(--font-mono);
+  font-size:11px;
+}
+.status-row .key { color: var(--muted); }
+.status-row .val { color: var(--text); }
+.status-row .val.queued  { color: var(--yellow); }
+.status-row .val.completed.fake { color: var(--red); font-weight:700; }
+.status-row .val.completed.real { color: var(--green); font-weight:700; }
+.status-row .val.failed  { color: var(--red); }
+
+.conf-bar-wrap {
+  height:4px;
+  background: var(--surface);
+  border-radius:2px;
+  overflow:hidden;
+  margin-top:4px;
+}
+.conf-bar-fill {
+  height:100%;
+  border-radius:2px;
+  transition: width 0.6s ease, background 0.4s;
+}
+
+.upload-btn {
+  width:100%;
+  padding:12px;
+  background: var(--accent);
+  color: var(--bg);
+  border:none;
+  border-radius:3px;
+  font-family: var(--font-mono);
+  font-size:12px;
+  font-weight:700;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  cursor:pointer;
+  transition:all 0.2s;
+}
+.upload-btn:hover { background: #33eeff; }
+.upload-btn:disabled { opacity:0.3; cursor:not-allowed; background: var(--muted); }
+
+/* ─── HISTORY TABLE ─── */
+.table-wrap {
+  background: var(--card);
+  border:1px solid var(--border);
+  border-radius:4px;
+  overflow:hidden;
+}
+
+table {
+  width:100%;
+  border-collapse:collapse;
+  font-family: var(--font-mono);
+  font-size:11px;
+}
+thead tr {
+  background: var(--surface);
+  border-bottom:1px solid var(--border);
+}
+thead th {
+  padding:12px 16px;
+  text-align:left;
+  color: var(--muted);
+  font-weight:500;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  font-size:10px;
+}
+tbody tr {
+  border-bottom:1px solid var(--border);
+  transition:background 0.15s;
+}
+tbody tr:last-child { border-bottom:none; }
+tbody tr:hover { background: rgba(255,255,255,0.02); }
+tbody td {
+  padding:12px 16px;
+  color: var(--muted2);
+  vertical-align:middle;
+}
+.td-filename { color: var(--text); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.td-id { color: var(--muted); font-size:10px; }
+
+.badge {
+  display:inline-block;
+  padding:3px 10px;
+  border-radius:2px;
+  font-size:10px;
+  font-weight:700;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+}
+.badge.fake     { background:rgba(255,51,85,0.15);  color:var(--red);    border:1px solid rgba(255,51,85,0.3); }
+.badge.real     { background:rgba(0,255,136,0.1);   color:var(--green);  border:1px solid rgba(0,255,136,0.25); }
+.badge.queued   { background:rgba(255,204,0,0.1);   color:var(--yellow); border:1px solid rgba(255,204,0,0.25); }
+.badge.failed   { background:rgba(255,51,85,0.1);   color:var(--red);    border:1px solid rgba(255,51,85,0.2); }
+.badge.processing { background:rgba(0,229,255,0.1); color:var(--accent); border:1px solid rgba(0,229,255,0.2); animation:blink 1.2s infinite; }
+
+.empty-state {
+  padding:48px;
+  text-align:center;
+  color: var(--muted);
+  font-family: var(--font-mono);
+  font-size:11px;
+  letter-spacing:0.1em;
+}
+
+.refresh-btn {
+  padding:6px 14px;
+  background:transparent;
+  border:1px solid var(--border2);
+  border-radius:3px;
+  color: var(--muted2);
+  font-family: var(--font-mono);
+  font-size:10px;
+  cursor:pointer;
+  transition:all 0.2s;
+  letter-spacing:0.08em;
+}
+.refresh-btn:hover { border-color:var(--accent); color:var(--accent); }
+
+/* ─── ANIMATIONS ─── */
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(16px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.spinner {
+  width:14px; height:14px;
+  border:2px solid var(--border2);
+  border-top-color: var(--accent);
+  border-radius:50%;
+  animation:spin 0.7s linear infinite;
+  display:inline-block;
+}
+</style>
+</head>
+<body>
+
+<div class="glow-orb glow-1"></div>
+<div class="glow-orb glow-2"></div>
+
+<div class="shell">
+
+  <!-- HEADER -->
+  <header>
+    <div class="logo">
+      <span class="logo-eyebrow">AI · Media Authentication</span>
+      <div class="logo-name"><span class="v">Veri</span><span class="s">Sight</span></div>
+      <div class="logo-sub">// deepfake_detection_system v1.0</div>
+    </div>
+    <div class="header-right">
+      <a href="stream.html" class="stream-cta">
+        <span class="pulse-dot"></span>
+        <span>Live Stream Detection →</span>
+      </a>
+      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)" id="clock"></span>
+    </div>
+  </header>
+
+  <!-- SYSTEM STATUS -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2>System Status</h2>
+    </div>
+    <div class="status-grid">
+      <div class="status-card">
+        <div class="sc-top">
+          <span class="sc-label">API Server</span>
+          <div class="sc-indicator checking" id="ind-api"></div>
+        </div>
+        <div class="sc-value green" id="val-api">—</div>
+        <div class="sc-sub" id="sub-api">checking...</div>
+      </div>
+      <div class="status-card">
+        <div class="sc-top">
+          <span class="sc-label">Redis Queue</span>
+          <div class="sc-indicator checking" id="ind-redis"></div>
+        </div>
+        <div class="sc-value muted" id="val-redis">—</div>
+        <div class="sc-sub" id="sub-redis">checking...</div>
+      </div>
+      <div class="status-card">
+        <div class="sc-top">
+          <span class="sc-label">Database</span>
+          <div class="sc-indicator checking" id="ind-db"></div>
+        </div>
+        <div class="sc-value muted" id="val-db">—</div>
+        <div class="sc-sub" id="sub-db">checking...</div>
+      </div>
+      <div class="status-card">
+        <div class="sc-top">
+          <span class="sc-label">Inference Worker</span>
+          <div class="sc-indicator checking" id="ind-worker"></div>
+        </div>
+        <div class="sc-value muted" id="val-worker">—</div>
+        <div class="sc-sub" id="sub-worker">checking...</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- UPLOAD -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2>Analyze Media</h2>
+    </div>
+    <div class="upload-layout">
+
+      <!-- Drop zone -->
+      <div class="drop-zone" id="drop-zone">
+        <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"/>
+        <div class="drop-icon">⬆</div>
+        <div class="drop-title">Drop file here</div>
+        <div class="drop-sub">JPG · PNG · WEBP · MP4 · WEBM</div>
+        <div class="drop-sub">MAX 10MB IMAGE / 100MB VIDEO</div>
+      </div>
+
+      <!-- Result panel -->
+      <div class="upload-result">
+        <div class="ur-title">Analysis Result</div>
+        <div class="ur-preview" id="preview-box">
+          <span>// no file selected</span>
+        </div>
+        <div class="ur-status" id="status-rows">
+          <div class="status-row">
+            <span class="key">JOB ID</span>
+            <span class="val" id="r-jobid">—</span>
+          </div>
+          <div class="status-row">
+            <span class="key">STATUS</span>
+            <span class="val" id="r-status">—</span>
+          </div>
+          <div class="status-row">
+            <span class="key">VERDICT</span>
+            <span class="val" id="r-verdict">—</span>
+          </div>
+          <div class="status-row">
+            <span class="key">CONFIDENCE</span>
+            <span class="val" id="r-confidence">—</span>
+          </div>
+          <div class="conf-bar-wrap">
+            <div class="conf-bar-fill" id="conf-bar" style="width:0%;background:var(--muted)"></div>
+          </div>
+        </div>
+        <button class="upload-btn" id="upload-btn" disabled>Select a file to analyze</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- JOB HISTORY -->
+  <section>
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <h2>Job History</h2>
+      <button class="refresh-btn" id="refresh-btn" onclick="loadHistory()">↻ Refresh</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>File</th>
+            <th>Job ID</th>
+            <th>Verdict</th>
+            <th>Confidence</th>
+            <th>Type</th>
+            <th>Time</th>
+          </tr>
+        </thead>
+        <tbody id="history-body">
+          <tr><td colspan="6"><div class="empty-state">// loading history...</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div><!-- /shell -->
+
+<script>
+// ─── CLOCK ───
+function updateClock() {
+  document.getElementById("clock").textContent =
+    new Date().toLocaleTimeString("en-US", {hour12:false}) + " LOCAL";
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+// ─── SYSTEM STATUS ───
+async function checkStatus() {
+  // API health
+  try {
+    const r = await fetch("/health");
+    const d = await r.json();
+    setStatus("api", "ONLINE", d.uptime || "operational", "ok");
+  } catch {
+    setStatus("api", "OFFLINE", "cannot reach server", "error");
+  }
+
+  // Redis, DB, Worker — from /health/details endpoint
+  try {
+    const r = await fetch("/health/details");
+    const d = await r.json();
+
+    setStatus("redis",
+      d.redis ? "ONLINE" : "OFFLINE",
+      d.redis ? "queue ready" : "connection failed",
+      d.redis ? "ok" : "error"
+    );
+    setStatus("db",
+      d.database ? "ONLINE" : "OFFLINE",
+      d.database ? "mysql connected" : "connection failed",
+      d.database ? "ok" : "error"
+    );
+    setStatus("worker",
+      d.worker ? "RUNNING" : "IDLE",
+      d.worker ? "gpu inference ready" : "worker not detected",
+      d.worker ? "ok" : "warn"
+    );
+  } catch {
+    // If endpoint doesn't exist yet, show graceful fallback
+    setStatus("redis",  "UNKNOWN", "endpoint not found", "warn");
+    setStatus("db",     "UNKNOWN", "endpoint not found", "warn");
+    setStatus("worker", "UNKNOWN", "endpoint not found", "warn");
+  }
+}
+
+function setStatus(key, value, sub, state) {
+  const valEl = document.getElementById(`val-${key}`);
+  const subEl = document.getElementById(`sub-${key}`);
+  const indEl = document.getElementById(`ind-${key}`);
+
+  valEl.textContent = value;
+  subEl.textContent = sub;
+  indEl.className = `sc-indicator ${state}`;
+
+  valEl.className = "sc-value " + ({
+    ok: "green", error: "red", warn: "cyan", checking: "muted"
+  }[state] || "muted");
+}
+
+checkStatus();
+setInterval(checkStatus, 15000); // re-check every 15s
+
+// ─── FILE UPLOAD ───
+const dropZone   = document.getElementById("drop-zone");
+const fileInput  = document.getElementById("file-input");
+const uploadBtn  = document.getElementById("upload-btn");
+const previewBox = document.getElementById("preview-box");
+
+let selectedFile = null;
+let pollingTimer = null;
+
+fileInput.addEventListener("change", e => onFileSelected(e.target.files[0]));
+
+dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+dropZone.addEventListener("drop", e => {
+  e.preventDefault();
+  dropZone.classList.remove("dragover");
+  if (e.dataTransfer.files[0]) onFileSelected(e.dataTransfer.files[0]);
+});
+
+function onFileSelected(file) {
+  selectedFile = file;
+  uploadBtn.disabled = false;
+  uploadBtn.textContent = `Analyze "${file.name}"`;
+
+  // Preview
+  if (file.type.startsWith("image/")) {
+    const reader = new FileReader();
+    reader.onload = e => {
+      previewBox.innerHTML = `<img src="${e.target.result}" alt="preview"/>`;
+    };
+    reader.readAsDataURL(file);
+  } else {
+    previewBox.innerHTML = `<span style="color:var(--accent)">🎞 ${file.name}</span>`;
+  }
+
+  setResultField("r-jobid",     "—");
+  setResultField("r-status",    "—");
+  setResultField("r-verdict",   "—");
+  setResultField("r-confidence","—");
+  document.getElementById("conf-bar").style.width = "0%";
+}
+
+uploadBtn.addEventListener("click", async () => {
+  if (!selectedFile) return;
+
+  uploadBtn.disabled = true;
+  uploadBtn.innerHTML = `<span class="spinner"></span> Uploading...`;
+
+  const formData = new FormData();
+  formData.append("file", selectedFile);
+
+  try {
+    const res = await fetch("/upload/", { method:"POST", body:formData });
+    const data = await res.json();
+
+    if (!res.ok) throw new Error(data.detail || "Upload failed");
+
+    const jobId = data.job_id;
+    setResultField("r-jobid",   jobId.slice(0,8) + "...");
+    setResultField("r-status",  "queued", "queued");
+    setResultField("r-verdict", "waiting...");
+    uploadBtn.textContent = "Analyzing...";
+
+    // Start polling
+    clearInterval(pollingTimer);
+    pollingTimer = setInterval(() => pollStatus(jobId), 2000);
+
+  } catch(e) {
+    uploadBtn.textContent = "Upload failed — try again";
+    uploadBtn.disabled = false;
+    console.error(e);
+  }
+});
+
+async function pollStatus(jobId) {
+  try {
+    const res = await fetch(`/status/${jobId}`);
+    const data = await res.json();
+
+    setResultField("r-status", data.status, data.status);
+
+    if (data.status === "completed") {
+      clearInterval(pollingTimer);
+      const verdict = data.verdict || data.result || "—";
+      const isFake = verdict.toLowerCase().includes("fake");
+      const conf = data.confidence ? Math.round(data.confidence * 100) : 0;
+
+      setResultField("r-verdict",    verdict.toUpperCase(), `completed ${isFake ? "fake" : "real"}`);
+      setResultField("r-confidence", `${conf}%`);
+
+      const bar = document.getElementById("conf-bar");
+      bar.style.width = `${conf}%`;
+      bar.style.background = isFake ? "var(--red)" : "var(--green)";
+
+      uploadBtn.textContent = "Analyze Another File";
+      uploadBtn.disabled = false;
+      loadHistory();
+
+    } else if (data.status === "failed") {
+      clearInterval(pollingTimer);
+      setResultField("r-verdict", "FAILED", "failed");
+      uploadBtn.textContent = "Try Again";
+      uploadBtn.disabled = false;
+    }
+  } catch(e) {
+    console.error("Poll error:", e);
+  }
+}
+
+function setResultField(id, value, cls="") {
+  const el = document.getElementById(id);
+  el.textContent = value;
+  el.className = "val " + cls;
+}
+
+// ─── JOB HISTORY ───
+async function loadHistory() {
+  const tbody = document.getElementById("history-body");
+
+  try {
+    const res = await fetch("/jobs?limit=20");
+    const jobs = await res.json();
+
+    if (!jobs.length) {
+      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">// no jobs yet</div></td></tr>`;
+      return;
+    }
+
+    tbody.innerHTML = jobs.map(job => {
+      const verdict  = job.verdict || job.result || "—";
+      const isFake   = verdict.toLowerCase().includes("fake");
+      const conf     = job.confidence ? Math.round(job.confidence * 100) + "%" : "—";
+      const badgeCls = job.status === "completed" ? (isFake ? "fake" : "real")
+                     : job.status === "queued"    ? "queued"
+                     : job.status === "failed"    ? "failed" : "processing";
+      const badgeTxt = job.status === "completed" ? verdict.toUpperCase() : job.status.toUpperCase();
+      const time     = job.created_at
+        ? new Date(job.created_at).toLocaleTimeString("en-US", {hour12:false})
+        : "—";
+      const mediaType = job.media_type || "image";
+
+      return `
+        <tr>
+          <td class="td-filename">${job.filename || "—"}</td>
+          <td class="td-id">${(job.job_id||"").slice(0,8)}...</td>
+          <td><span class="badge ${badgeCls}">${badgeTxt}</span></td>
+          <td>${conf}</td>
+          <td><span style="color:var(--muted);font-family:var(--font-mono);font-size:10px">${mediaType}</span></td>
+          <td>${time}</td>
+        </tr>`;
+    }).join("");
+
+  } catch {
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">// could not load history — is the server running?</div></td></tr>`;
+  }
+}
+
+loadHistory();
+setInterval(loadHistory, 10000); // auto-refresh every 10s
+</script>
+</body>
+</html>
