@@ -3,864 +3,627 @@
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<title>VeriSight — Deepfake Detection System</title>
-<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;700&family=Epilogue:wght@300;400;700;900&display=swap" rel="stylesheet"/>
+<title>VeriSight — Deepfake Detection</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@400;500;600;700;800&family=DM+Sans:ital,wght@0,300;0,400;0,500;1,400&display=swap" rel="stylesheet"/>
 <style>
 :root {
-  --bg:       #070709;
-  --surface:  #0e0e13;
-  --card:     #12121a;
-  --border:   #1c1c28;
-  --border2:  #252535;
-  --accent:   #00e5ff;
-  --green:    #00ff88;
-  --red:      #ff3355;
-  --yellow:   #ffcc00;
-  --text:     #ddddf0;
-  --muted:    #44445a;
-  --muted2:   #666680;
-  --font-mono: 'IBM Plex Mono', monospace;
-  --font-display: 'Epilogue', sans-serif;
+  --bg:        #f8f7f4;
+  --surface:   #ffffff;
+  --border:    #e8e5e0;
+  --border2:   #d4d0c8;
+  --text:      #1a1814;
+  --muted:     #7a7670;
+  --muted2:    #a8a49c;
+  --green:     #16a34a;
+  --green-bg:  #f0fdf4;
+  --green-br:  #bbf7d0;
+  --red:       #dc2626;
+  --red-bg:    #fef2f2;
+  --red-br:    #fecaca;
+  --amber:     #d97706;
+  --amber-bg:  #fffbeb;
+  --amber-br:  #fde68a;
+  --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+  --shadow:    0 4px 16px rgba(0,0,0,0.08), 0 1px 4px rgba(0,0,0,0.04);
+  --radius:    16px;
+  --radius-sm: 10px;
 }
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;min-height:100vh;-webkit-font-smoothing:antialiased;}
 
-*, *::before, *::after { margin:0; padding:0; box-sizing:border-box; }
+/* ── NAV ── */
+nav{position:sticky;top:0;z-index:100;background:rgba(248,247,244,0.92);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);padding:0 32px;height:60px;display:flex;align-items:center;justify-content:space-between;}
+.nav-logo{font-family:'Bricolage Grotesque',sans-serif;font-size:1.2rem;font-weight:800;letter-spacing:-0.03em;color:var(--text);text-decoration:none;}
+.nav-logo span{color:#16a34a;}
+.nav-right{display:flex;align-items:center;gap:10px;}
+.live-badge{display:flex;align-items:center;gap:5px;font-size:0.72rem;font-weight:600;color:var(--green);background:var(--green-bg);border:1px solid var(--green-br);padding:3px 9px;border-radius:20px;}
+.live-dot{width:5px;height:5px;border-radius:50%;background:var(--green);animation:pulse 1.5s ease-in-out infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:0.25;}}
+.nav-cta{padding:6px 14px;background:var(--text);color:white;border-radius:8px;font-size:0.82rem;font-weight:500;text-decoration:none;display:flex;align-items:center;gap:5px;transition:all 0.15s;}
+.nav-cta:hover{background:#2d2a26;transform:translateY(-1px);}
 
-html { scroll-behavior: smooth; }
+/* ── HERO ── */
+.hero{text-align:center;padding:60px 24px 44px;animation:fadeUp 0.5s ease both;}
+.hero-badge{display:inline-flex;align-items:center;gap:6px;background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:4px 13px;font-size:0.75rem;font-weight:500;color:var(--muted);margin-bottom:18px;box-shadow:var(--shadow-sm);}
+h1{font-family:'Bricolage Grotesque',sans-serif;font-size:clamp(2rem,5vw,3.4rem);font-weight:800;letter-spacing:-0.04em;line-height:1.1;margin-bottom:12px;}
+h1 em{font-style:normal;background:linear-gradient(135deg,#16a34a,#0d9488);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+.hero-sub{font-size:0.97rem;color:var(--muted);max-width:440px;margin:0 auto 28px;line-height:1.65;}
 
-body {
-  background: var(--bg);
-  color: var(--text);
-  font-family: var(--font-display);
-  min-height: 100vh;
-  overflow-x: hidden;
-}
+/* ── LIVE STATS ── */
+.stats-row{display:flex;align-items:center;justify-content:center;gap:0;flex-wrap:wrap;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);max-width:560px;margin:0 auto;box-shadow:var(--shadow-sm);overflow:hidden;}
+.stat-item{flex:1;min-width:120px;text-align:center;padding:16px 20px;position:relative;}
+.stat-item+.stat-item::before{content:"";position:absolute;left:0;top:20%;height:60%;width:1px;background:var(--border);}
+.stat-num{font-family:'Bricolage Grotesque',sans-serif;font-size:1.5rem;font-weight:800;letter-spacing:-0.03em;color:var(--text);min-height:1.8rem;display:flex;align-items:center;justify-content:center;}
+.stat-num.loading{color:var(--muted2);}
+.stat-label{font-size:0.68rem;color:var(--muted2);margin-top:2px;text-transform:uppercase;letter-spacing:0.04em;}
 
-/* ─── GRAIN ─── */
-body::after {
-  content:'';
-  position:fixed; inset:0;
-  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.035'/%3E%3C/svg%3E");
-  pointer-events:none; z-index:9999;
-}
+/* ── LAYOUT ── */
+.main{max-width:1060px;margin:0 auto;padding:28px 24px 80px;display:grid;grid-template-columns:1fr 1fr;gap:18px;align-items:start;}
+@media(max-width:720px){.main{grid-template-columns:1fr;}}
 
-/* ─── SCAN LINE ─── */
-body::before {
-  content:'';
-  position:fixed; inset:0;
-  background: repeating-linear-gradient(
-    0deg,
-    transparent,
-    transparent 2px,
-    rgba(0,229,255,0.012) 2px,
-    rgba(0,229,255,0.012) 4px
-  );
-  pointer-events:none; z-index:9998;
-}
+/* ── CARD ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);box-shadow:var(--shadow-sm);overflow:hidden;transition:box-shadow 0.2s;animation:fadeUp 0.5s ease both;}
+.card:nth-child(1){animation-delay:0.08s;}
+.card:nth-child(2){animation-delay:0.13s;}
+.card:nth-child(3){animation-delay:0.18s;}
+.card:hover{box-shadow:var(--shadow);}
+.card-header{padding:18px 22px 0;display:flex;align-items:center;justify-content:space-between;}
+.card-title{font-family:'Bricolage Grotesque',sans-serif;font-size:0.92rem;font-weight:700;letter-spacing:-0.01em;}
+.card-subtitle{font-size:0.72rem;color:var(--muted2);margin-top:2px;}
+.card-body{padding:14px 22px 22px;}
 
-/* ─── GLOW ─── */
-.glow-orb {
-  position:fixed;
-  border-radius:50%;
-  filter:blur(120px);
-  pointer-events:none;
-  z-index:0;
-}
-.glow-1 { width:500px;height:500px; top:-150px;left:-150px; background:rgba(0,229,255,0.04); animation: orbdrift 20s ease-in-out infinite alternate; }
-.glow-2 { width:400px;height:400px; bottom:-100px;right:-100px; background:rgba(0,255,136,0.035); animation: orbdrift2 25s ease-in-out infinite alternate; }
-@keyframes orbdrift  { to { transform: translate(80px,100px); } }
-@keyframes orbdrift2 { to { transform: translate(-60px,-80px); } }
+/* ── UPLOAD ── */
+.drop-zone{border:2px dashed var(--border2);border-radius:var(--radius-sm);padding:32px 20px;text-align:center;cursor:pointer;transition:all 0.2s;position:relative;background:var(--bg);}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.drop-zone:hover,.drop-zone.dragover{border-color:#16a34a;background:var(--green-bg);}
+.drop-icon{width:44px;height:44px;background:var(--surface);border:1px solid var(--border);border-radius:11px;display:flex;align-items:center;justify-content:center;margin:0 auto 10px;font-size:1.2rem;box-shadow:var(--shadow-sm);transition:all 0.2s;}
+.drop-zone:hover .drop-icon,.drop-zone.dragover .drop-icon{border-color:#16a34a;box-shadow:0 0 0 4px rgba(22,163,74,0.1);}
+.drop-title{font-weight:600;font-size:0.88rem;margin-bottom:3px;}
+.drop-sub{font-size:0.72rem;color:var(--muted2);}
 
-/* ─── LAYOUT ─── */
-.shell {
-  position:relative; z-index:1;
-  max-width:1100px;
-  margin:0 auto;
-  padding:0 28px 100px;
-}
+.file-preview{display:none;align-items:center;gap:11px;padding:10px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-sm);margin-top:10px;}
+.file-preview.show{display:flex;}
+.preview-thumb{width:42px;height:42px;border-radius:8px;object-fit:cover;border:1px solid var(--border);flex-shrink:0;}
+.preview-thumb-video{width:42px;height:42px;border-radius:8px;background:var(--text);display:flex;align-items:center;justify-content:center;color:white;font-size:1rem;flex-shrink:0;}
+.preview-info{flex:1;min-width:0;}
+.preview-name{font-size:0.8rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.preview-size{font-size:0.68rem;color:var(--muted2);margin-top:2px;}
+.preview-remove{width:24px;height:24px;border-radius:6px;border:1px solid var(--border);background:var(--surface);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:0.72rem;color:var(--muted);transition:all 0.15s;flex-shrink:0;}
+.preview-remove:hover{border-color:var(--red);color:var(--red);background:var(--red-bg);}
 
-/* ─── HEADER ─── */
-header {
-  padding: 52px 0 44px;
-  border-bottom: 1px solid var(--border);
-  display:flex;
-  justify-content:space-between;
-  align-items:flex-end;
-  animation: fadeUp 0.7s ease both;
-}
+.analyze-btn{width:100%;padding:11px;background:var(--text);color:white;border:none;border-radius:var(--radius-sm);font-family:'DM Sans',sans-serif;font-size:0.88rem;font-weight:600;cursor:pointer;margin-top:11px;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:7px;}
+.analyze-btn:hover:not(:disabled){background:#2d2a26;transform:translateY(-1px);box-shadow:0 4px 12px rgba(0,0,0,0.15);}
+.analyze-btn:disabled{opacity:0.32;cursor:not-allowed;transform:none;}
 
-.logo {
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
+.polling-bar{height:3px;background:var(--border);border-radius:20px;overflow:hidden;margin-top:10px;display:none;}
+.polling-bar.active{display:block;}
+.polling-fill{height:100%;width:30%;background:linear-gradient(90deg,transparent,var(--amber),transparent);animation:sweep 1.4s ease-in-out infinite;}
+@keyframes sweep{from{transform:translateX(-200%);}to{transform:translateX(400%);}}
 
-.logo-eyebrow {
-  font-family: var(--font-mono);
-  font-size:10px;
-  letter-spacing:0.25em;
-  color: var(--muted2);
-  text-transform:uppercase;
-}
+/* ── RESULT ── */
+.result-empty{display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 20px;text-align:center;color:var(--muted2);}
+.result-empty-icon{font-size:2.2rem;margin-bottom:10px;opacity:0.3;}
+.result-empty p{font-size:0.8rem;line-height:1.55;}
+.result-content{display:none;}
+.result-content.show{display:block;}
 
-.logo-name {
-  font-size: clamp(2.2rem, 5vw, 3.8rem);
-  font-weight:900;
-  letter-spacing:-0.04em;
-  line-height:1;
-}
-.logo-name .v { color: var(--accent); }
-.logo-name .s { color: var(--green); }
+.verdict-display{padding:22px 18px;text-align:center;border-radius:var(--radius-sm);margin-bottom:13px;}
+.verdict-display.real{background:var(--green-bg);border:1px solid var(--green-br);}
+.verdict-display.fake{background:var(--red-bg);border:1px solid var(--red-br);}
+.verdict-display.analyzing{background:var(--amber-bg);border:1px solid var(--amber-br);}
+.verdict-icon{font-size:2.2rem;margin-bottom:5px;}
+.verdict-label{font-family:'Bricolage Grotesque',sans-serif;font-size:1.35rem;font-weight:800;letter-spacing:-0.03em;}
+.verdict-display.real .verdict-label{color:var(--green);}
+.verdict-display.fake .verdict-label{color:var(--red);}
+.verdict-display.analyzing .verdict-label{color:var(--amber);}
+.verdict-desc{font-size:0.76rem;margin-top:4px;opacity:0.65;}
 
-.logo-sub {
-  font-family: var(--font-mono);
-  font-size:11px;
-  color: var(--muted);
-  margin-top:4px;
-}
+.conf-section{margin-bottom:12px;}
+.conf-header{display:flex;justify-content:space-between;font-size:0.73rem;font-weight:500;margin-bottom:6px;color:var(--muted);}
+.conf-header span:last-child{font-weight:700;color:var(--text);}
+.conf-track{height:6px;background:var(--bg);border:1px solid var(--border);border-radius:20px;overflow:hidden;}
+.conf-fill{height:100%;border-radius:20px;transition:width 0.9s cubic-bezier(0.4,0,0.2,1);background:linear-gradient(90deg,#16a34a,#0d9488);}
+.conf-fill.fake{background:linear-gradient(90deg,#dc2626,#db2777);}
 
-.header-right {
-  display:flex;
-  flex-direction:column;
-  align-items:flex-end;
-  gap:10px;
-}
+.meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:7px;}
+.meta-item{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:9px 11px;}
+.meta-label{font-size:0.64rem;color:var(--muted2);text-transform:uppercase;letter-spacing:0.06em;margin-bottom:3px;}
+.meta-value{font-size:0.8rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
 
-.stream-cta {
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:10px 20px;
-  border:1px solid var(--accent);
-  border-radius:3px;
-  color: var(--accent);
-  font-family: var(--font-mono);
-  font-size:11px;
-  letter-spacing:0.1em;
-  text-decoration:none;
-  text-transform:uppercase;
-  transition:all 0.2s;
-  position:relative;
-  overflow:hidden;
-}
-.stream-cta::before {
-  content:'';
-  position:absolute; inset:0;
-  background: var(--accent);
-  transform: translateX(-100%);
-  transition: transform 0.25s ease;
-}
-.stream-cta:hover::before { transform: translateX(0); }
-.stream-cta:hover { color: var(--bg); }
-.stream-cta span, .stream-cta svg { position:relative; z-index:1; }
+/* ── HISTORY TABLE ── */
+.history-card{grid-column:1/-1;}
+.history-controls{display:flex;gap:6px;align-items:center;}
+.filter-btn{padding:4px 10px;border-radius:20px;font-size:0.7rem;font-weight:500;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--muted);transition:all 0.15s;}
+.filter-btn:hover{border-color:var(--border2);color:var(--text);}
+.filter-btn.active{background:var(--text);color:white;border-color:var(--text);}
+.filter-btn.fake-filter.active{background:var(--red);border-color:var(--red);}
+.filter-btn.real-filter.active{background:var(--green);border-color:var(--green);}
+.refresh-btn{margin-left:auto;padding:4px 10px;border-radius:8px;font-size:0.7rem;font-weight:500;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--muted);transition:all 0.15s;display:flex;align-items:center;gap:4px;}
+.refresh-btn:hover{border-color:var(--text);color:var(--text);}
+.refresh-btn.spinning svg{animation:spin 0.6s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
 
-.pulse-dot {
-  width:7px; height:7px;
-  border-radius:50%;
-  background: var(--green);
-  animation: blink 1.4s ease-in-out infinite;
-}
-@keyframes blink { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
+/* Table */
+.history-table-wrap{margin-top:14px;overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius-sm);}
+table{width:100%;border-collapse:collapse;}
+thead tr{background:var(--bg);border-bottom:1px solid var(--border);}
+thead th{padding:9px 14px;font-size:0.68rem;font-weight:600;text-transform:uppercase;letter-spacing:0.05em;color:var(--muted2);text-align:left;white-space:nowrap;}
+thead th:last-child{text-align:right;}
+tbody tr{border-bottom:1px solid var(--border);transition:background 0.12s;}
+tbody tr:last-child{border-bottom:none;}
+tbody tr:hover{background:var(--bg);}
+td{padding:11px 14px;font-size:0.82rem;vertical-align:middle;}
 
-/* ─── SECTION HEADER ─── */
-.section-head {
-  display:flex;
-  align-items:center;
-  gap:14px;
-  margin-bottom:24px;
-}
-.section-head h2 {
-  font-size:0.78rem;
-  font-family: var(--font-mono);
-  letter-spacing:0.2em;
-  text-transform:uppercase;
-  color: var(--muted2);
-}
-.section-head::after {
-  content:'';
-  flex:1;
-  height:1px;
-  background: var(--border);
-}
-.section-num {
-  font-family: var(--font-mono);
-  font-size:10px;
-  color: var(--muted);
-  border:1px solid var(--border);
-  padding:2px 7px;
-  border-radius:2px;
-}
+.td-file{display:flex;align-items:center;gap:9px;}
+.td-file-icon{width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center;font-size:0.85rem;flex-shrink:0;}
+.td-file-icon.real{background:var(--green-bg);}
+.td-file-icon.fake{background:var(--red-bg);}
+.td-file-icon.queued{background:var(--amber-bg);}
+.td-file-icon.failed{background:#f5f5f5;}
+.td-filename{font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:200px;}
+.td-time{color:var(--muted2);font-size:0.75rem;}
 
-/* ─── STATUS GRID ─── */
-section { margin-top:56px; animation: fadeUp 0.7s ease both; }
-section:nth-child(2){animation-delay:0.08s}
-section:nth-child(3){animation-delay:0.16s}
-section:nth-child(4){animation-delay:0.24s}
+.verdict-pill{display:inline-flex;align-items:center;padding:2px 9px;border-radius:20px;font-size:0.7rem;font-weight:700;letter-spacing:0.02em;white-space:nowrap;}
+.verdict-pill.real{background:var(--green-bg);color:var(--green);border:1px solid var(--green-br);}
+.verdict-pill.fake{background:var(--red-bg);color:var(--red);border:1px solid var(--red-br);}
+.verdict-pill.queued{background:var(--amber-bg);color:var(--amber);border:1px solid var(--amber-br);}
+.verdict-pill.failed{background:#f5f5f5;color:var(--muted);border:1px solid var(--border);}
 
-.status-grid {
-  display:grid;
-  grid-template-columns:repeat(auto-fill, minmax(220px, 1fr));
-  gap:12px;
-}
+/* Mini confidence bar in table */
+.mini-conf{display:flex;align-items:center;gap:7px;}
+.mini-track{flex:1;height:5px;background:var(--border);border-radius:10px;overflow:hidden;min-width:60px;}
+.mini-fill{height:100%;border-radius:10px;background:linear-gradient(90deg,#16a34a,#0d9488);}
+.mini-fill.fake{background:linear-gradient(90deg,#dc2626,#db2777);}
+.mini-pct{font-size:0.72rem;font-weight:600;color:var(--muted);min-width:28px;text-align:right;}
 
-.status-card {
-  background: var(--card);
-  border:1px solid var(--border);
-  border-radius:4px;
-  padding:20px;
-  display:flex;
-  flex-direction:column;
-  gap:12px;
-  transition:border-color 0.2s;
-  cursor:default;
-}
-.status-card:hover { border-color: var(--border2); }
+.td-right{text-align:right;}
 
-.sc-top {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-}
-.sc-label {
-  font-family: var(--font-mono);
-  font-size:10px;
-  letter-spacing:0.15em;
-  color: var(--muted);
-  text-transform:uppercase;
-}
-.sc-indicator {
-  width:8px; height:8px;
-  border-radius:50%;
-}
-.sc-indicator.ok    { background: var(--green); box-shadow:0 0 8px var(--green); }
-.sc-indicator.warn  { background: var(--yellow); box-shadow:0 0 8px var(--yellow); }
-.sc-indicator.error { background: var(--red); box-shadow:0 0 8px var(--red); }
-.sc-indicator.checking { background: var(--muted); animation:blink 1s infinite; }
+.history-empty-row td{text-align:center;padding:44px 20px;color:var(--muted2);font-size:0.82rem;}
+.history-empty-icon{font-size:1.6rem;margin-bottom:8px;opacity:0.3;}
 
-.sc-value {
-  font-size:1.5rem;
-  font-weight:700;
-  letter-spacing:-0.02em;
-  font-family: var(--font-mono);
-}
-.sc-value.green { color: var(--green); }
-.sc-value.red   { color: var(--red); }
-.sc-value.cyan  { color: var(--accent); }
-.sc-value.muted { color: var(--muted2); }
-
-.sc-sub {
-  font-size:0.7rem;
-  color: var(--muted);
-  font-family: var(--font-mono);
-}
-
-/* ─── UPLOAD ZONE ─── */
-.upload-layout {
-  display:grid;
-  grid-template-columns: 1fr 1fr;
-  gap:20px;
-}
-
-@media(max-width:680px){ .upload-layout { grid-template-columns:1fr; } }
-
-.drop-zone {
-  border:1px dashed var(--border2);
-  border-radius:4px;
-  padding:48px 24px;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  gap:14px;
-  cursor:pointer;
-  transition:all 0.25s;
-  background: var(--card);
-  text-align:center;
-  position:relative;
-}
-.drop-zone:hover, .drop-zone.dragover {
-  border-color: var(--accent);
-  background: rgba(0,229,255,0.03);
-}
-.drop-zone input { position:absolute;inset:0;opacity:0;cursor:pointer; }
-
-.drop-icon {
-  width:48px; height:48px;
-  border:1px solid var(--border2);
-  border-radius:50%;
-  display:flex; align-items:center; justify-content:center;
-  font-size:1.4rem;
-  color: var(--muted2);
-  transition: all 0.25s;
-}
-.drop-zone:hover .drop-icon {
-  border-color: var(--accent);
-  color: var(--accent);
-}
-
-.drop-title {
-  font-size:0.9rem;
-  font-weight:700;
-}
-.drop-sub {
-  font-family: var(--font-mono);
-  font-size:10px;
-  color: var(--muted);
-  letter-spacing:0.1em;
-}
-
-/* Upload result panel */
-.upload-result {
-  background: var(--card);
-  border:1px solid var(--border);
-  border-radius:4px;
-  padding:24px;
-  display:flex;
-  flex-direction:column;
-  gap:16px;
-}
-
-.ur-title {
-  font-family: var(--font-mono);
-  font-size:10px;
-  letter-spacing:0.2em;
-  color: var(--muted);
-  text-transform:uppercase;
-}
-
-.ur-preview {
-  width:100%;
-  height:160px;
-  background: var(--surface);
-  border:1px solid var(--border);
-  border-radius:3px;
-  overflow:hidden;
-  display:flex;
-  align-items:center;
-  justify-content:center;
-  color: var(--muted);
-  font-size:0.75rem;
-  font-family: var(--font-mono);
-}
-.ur-preview img {
-  width:100%; height:100%;
-  object-fit:cover;
-}
-
-.ur-status {
-  display:flex;
-  flex-direction:column;
-  gap:8px;
-}
-
-.status-row {
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  font-family: var(--font-mono);
-  font-size:11px;
-}
-.status-row .key { color: var(--muted); }
-.status-row .val { color: var(--text); }
-.status-row .val.queued  { color: var(--yellow); }
-.status-row .val.completed.fake { color: var(--red); font-weight:700; }
-.status-row .val.completed.real { color: var(--green); font-weight:700; }
-.status-row .val.failed  { color: var(--red); }
-
-.conf-bar-wrap {
-  height:4px;
-  background: var(--surface);
-  border-radius:2px;
-  overflow:hidden;
-  margin-top:4px;
-}
-.conf-bar-fill {
-  height:100%;
-  border-radius:2px;
-  transition: width 0.6s ease, background 0.4s;
-}
-
-.upload-btn {
-  width:100%;
-  padding:12px;
-  background: var(--accent);
-  color: var(--bg);
-  border:none;
-  border-radius:3px;
-  font-family: var(--font-mono);
-  font-size:12px;
-  font-weight:700;
-  letter-spacing:0.1em;
-  text-transform:uppercase;
-  cursor:pointer;
-  transition:all 0.2s;
-}
-.upload-btn:hover { background: #33eeff; }
-.upload-btn:disabled { opacity:0.3; cursor:not-allowed; background: var(--muted); }
-
-/* ─── HISTORY TABLE ─── */
-.table-wrap {
-  background: var(--card);
-  border:1px solid var(--border);
-  border-radius:4px;
-  overflow:hidden;
-}
-
-table {
-  width:100%;
-  border-collapse:collapse;
-  font-family: var(--font-mono);
-  font-size:11px;
-}
-thead tr {
-  background: var(--surface);
-  border-bottom:1px solid var(--border);
-}
-thead th {
-  padding:12px 16px;
-  text-align:left;
-  color: var(--muted);
-  font-weight:500;
-  letter-spacing:0.1em;
-  text-transform:uppercase;
-  font-size:10px;
-}
-tbody tr {
-  border-bottom:1px solid var(--border);
-  transition:background 0.15s;
-}
-tbody tr:last-child { border-bottom:none; }
-tbody tr:hover { background: rgba(255,255,255,0.02); }
-tbody td {
-  padding:12px 16px;
-  color: var(--muted2);
-  vertical-align:middle;
-}
-.td-filename { color: var(--text); max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.td-id { color: var(--muted); font-size:10px; }
-
-.badge {
-  display:inline-block;
-  padding:3px 10px;
-  border-radius:2px;
-  font-size:10px;
-  font-weight:700;
-  letter-spacing:0.08em;
-  text-transform:uppercase;
-}
-.badge.fake     { background:rgba(255,51,85,0.15);  color:var(--red);    border:1px solid rgba(255,51,85,0.3); }
-.badge.real     { background:rgba(0,255,136,0.1);   color:var(--green);  border:1px solid rgba(0,255,136,0.25); }
-.badge.queued   { background:rgba(255,204,0,0.1);   color:var(--yellow); border:1px solid rgba(255,204,0,0.25); }
-.badge.failed   { background:rgba(255,51,85,0.1);   color:var(--red);    border:1px solid rgba(255,51,85,0.2); }
-.badge.processing { background:rgba(0,229,255,0.1); color:var(--accent); border:1px solid rgba(0,229,255,0.2); animation:blink 1.2s infinite; }
-
-.empty-state {
-  padding:48px;
-  text-align:center;
-  color: var(--muted);
-  font-family: var(--font-mono);
-  font-size:11px;
-  letter-spacing:0.1em;
-}
-
-.refresh-btn {
-  padding:6px 14px;
-  background:transparent;
-  border:1px solid var(--border2);
-  border-radius:3px;
-  color: var(--muted2);
-  font-family: var(--font-mono);
-  font-size:10px;
-  cursor:pointer;
-  transition:all 0.2s;
-  letter-spacing:0.08em;
-}
-.refresh-btn:hover { border-color:var(--accent); color:var(--accent); }
-
-/* ─── ANIMATIONS ─── */
-@keyframes fadeUp {
-  from { opacity:0; transform:translateY(16px); }
-  to   { opacity:1; transform:translateY(0); }
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
-}
-
-.spinner {
-  width:14px; height:14px;
-  border:2px solid var(--border2);
-  border-top-color: var(--accent);
-  border-radius:50%;
-  animation:spin 0.7s linear infinite;
-  display:inline-block;
-}
+/* ── ANIMATIONS ── */
+@keyframes fadeUp{from{opacity:0;transform:translateY(16px);}to{opacity:1;transform:translateY(0);}}
+.spinner{width:14px;height:14px;border:2px solid rgba(255,255,255,0.3);border-top-color:white;border-radius:50%;animation:spin 0.7s linear infinite;display:inline-block;}
 </style>
 </head>
 <body>
 
-<div class="glow-orb glow-1"></div>
-<div class="glow-orb glow-2"></div>
+<!-- NAV -->
+<nav>
+  <a href="/" class="nav-logo">Veri<span>Sight</span></a>
+  <div class="nav-right">
+    <div class="live-badge">
+      <div class="live-dot"></div>
+      System Online
+    </div>
+    <a href="/static/stream.html" class="nav-cta">📡 Live Stream</a>
+  </div>
+</nav>
 
-<div class="shell">
+<!-- HERO -->
+<div class="hero">
+  <div class="hero-badge">🛡️ AI-Powered Media Verification</div>
+  <h1>Is this media <em>real</em>?<br/>Find out instantly.</h1>
+  <p class="hero-sub">Upload any image or video — VeriSight detects deepfakes using a model trained on FaceForensics++.</p>
 
-  <!-- HEADER -->
-  <header>
-    <div class="logo">
-      <span class="logo-eyebrow">AI · Media Authentication</span>
-      <div class="logo-name"><span class="v">Veri</span><span class="s">Sight</span></div>
-      <div class="logo-sub">// deepfake_detection_system v1.0</div>
+  <!-- LIVE STATS FROM /stats -->
+  <div class="stats-row">
+    <div class="stat-item">
+      <div class="stat-num loading" id="stat-total">—</div>
+      <div class="stat-label">Files analyzed</div>
     </div>
-    <div class="header-right">
-      <a href="stream.html" class="stream-cta">
-        <span class="pulse-dot"></span>
-        <span>Live Stream Detection →</span>
-      </a>
-      <span style="font-family:var(--font-mono);font-size:10px;color:var(--muted)" id="clock"></span>
+    <div class="stat-item">
+      <div class="stat-num loading" id="stat-conf">—</div>
+      <div class="stat-label">Avg confidence</div>
     </div>
-  </header>
+    <div class="stat-item">
+      <div class="stat-num loading" id="stat-fake">—</div>
+      <div class="stat-label">Deepfakes caught</div>
+    </div>
+  </div>
+</div>
 
-  <!-- SYSTEM STATUS -->
-  <section>
-    <div class="section-head">
-      <span class="section-num">01</span>
-      <h2>System Status</h2>
-    </div>
-    <div class="status-grid">
-      <div class="status-card">
-        <div class="sc-top">
-          <span class="sc-label">API Server</span>
-          <div class="sc-indicator checking" id="ind-api"></div>
-        </div>
-        <div class="sc-value green" id="val-api">—</div>
-        <div class="sc-sub" id="sub-api">checking...</div>
-      </div>
-      <div class="status-card">
-        <div class="sc-top">
-          <span class="sc-label">Redis Queue</span>
-          <div class="sc-indicator checking" id="ind-redis"></div>
-        </div>
-        <div class="sc-value muted" id="val-redis">—</div>
-        <div class="sc-sub" id="sub-redis">checking...</div>
-      </div>
-      <div class="status-card">
-        <div class="sc-top">
-          <span class="sc-label">Database</span>
-          <div class="sc-indicator checking" id="ind-db"></div>
-        </div>
-        <div class="sc-value muted" id="val-db">—</div>
-        <div class="sc-sub" id="sub-db">checking...</div>
-      </div>
-      <div class="status-card">
-        <div class="sc-top">
-          <span class="sc-label">Inference Worker</span>
-          <div class="sc-indicator checking" id="ind-worker"></div>
-        </div>
-        <div class="sc-value muted" id="val-worker">—</div>
-        <div class="sc-sub" id="sub-worker">checking...</div>
-      </div>
-    </div>
-  </section>
+<!-- MAIN GRID -->
+<div class="main">
 
   <!-- UPLOAD -->
-  <section>
-    <div class="section-head">
-      <span class="section-num">02</span>
-      <h2>Analyze Media</h2>
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Check Media</div>
+        <div class="card-subtitle">Image or video · Results in seconds</div>
+      </div>
     </div>
-    <div class="upload-layout">
-
-      <!-- Drop zone -->
+    <div class="card-body">
       <div class="drop-zone" id="drop-zone">
         <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp,video/mp4,video/webm,video/quicktime"/>
-        <div class="drop-icon">⬆</div>
-        <div class="drop-title">Drop file here</div>
-        <div class="drop-sub">JPG · PNG · WEBP · MP4 · WEBM</div>
-        <div class="drop-sub">MAX 10MB IMAGE / 100MB VIDEO</div>
+        <div class="drop-icon">⬆️</div>
+        <div class="drop-title">Drop file here or click to browse</div>
+        <div class="drop-sub">JPG · PNG · WEBP · MP4 · WEBM &nbsp;·&nbsp; Max 100MB</div>
       </div>
 
-      <!-- Result panel -->
-      <div class="upload-result">
-        <div class="ur-title">Analysis Result</div>
-        <div class="ur-preview" id="preview-box">
-          <span>// no file selected</span>
+      <div class="file-preview" id="file-preview">
+        <img class="preview-thumb" id="preview-img" src="" alt="" style="display:none"/>
+        <div class="preview-thumb-video" id="preview-video" style="display:none">🎞️</div>
+        <div class="preview-info">
+          <div class="preview-name" id="preview-name">—</div>
+          <div class="preview-size" id="preview-size">—</div>
         </div>
-        <div class="ur-status" id="status-rows">
-          <div class="status-row">
-            <span class="key">JOB ID</span>
-            <span class="val" id="r-jobid">—</span>
-          </div>
-          <div class="status-row">
-            <span class="key">STATUS</span>
-            <span class="val" id="r-status">—</span>
-          </div>
-          <div class="status-row">
-            <span class="key">VERDICT</span>
-            <span class="val" id="r-verdict">—</span>
-          </div>
-          <div class="status-row">
-            <span class="key">CONFIDENCE</span>
-            <span class="val" id="r-confidence">—</span>
-          </div>
-          <div class="conf-bar-wrap">
-            <div class="conf-bar-fill" id="conf-bar" style="width:0%;background:var(--muted)"></div>
-          </div>
-        </div>
-        <button class="upload-btn" id="upload-btn" disabled>Select a file to analyze</button>
+        <button class="preview-remove" id="remove-btn">✕</button>
+      </div>
+
+      <button class="analyze-btn" id="analyze-btn" disabled>Select a file to analyze</button>
+      <div class="polling-bar" id="polling-bar"><div class="polling-fill"></div></div>
+    </div>
+  </div>
+
+  <!-- RESULT -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Analysis Result</div>
+        <div class="card-subtitle">Powered by Deep-Fake-Detector (FaceForensics++)</div>
       </div>
     </div>
-  </section>
-
-  <!-- JOB HISTORY -->
-  <section>
-    <div class="section-head">
-      <span class="section-num">03</span>
-      <h2>Job History</h2>
-      <button class="refresh-btn" id="refresh-btn" onclick="loadHistory()">↻ Refresh</button>
+    <div class="card-body">
+      <div class="result-empty" id="result-empty">
+        <div class="result-empty-icon">🔍</div>
+        <p>Upload a file above to see<br/>your deepfake analysis here</p>
+      </div>
+      <div class="result-content" id="result-content">
+        <div class="verdict-display analyzing" id="verdict-display">
+          <div class="verdict-icon" id="verdict-icon">⏳</div>
+          <div class="verdict-label" id="verdict-label">—</div>
+          <div class="verdict-desc" id="verdict-desc"></div>
+        </div>
+        <div class="conf-section">
+          <div class="conf-header">
+            <span>Model confidence</span>
+            <span id="conf-pct">—</span>
+          </div>
+          <div class="conf-track">
+            <div class="conf-fill" id="conf-fill" style="width:0%"></div>
+          </div>
+        </div>
+        <div class="meta-grid">
+          <div class="meta-item">
+            <div class="meta-label">File</div>
+            <div class="meta-value" id="meta-file">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Status</div>
+            <div class="meta-value" id="meta-status">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Job ID</div>
+            <div class="meta-value" id="meta-jobid">—</div>
+          </div>
+          <div class="meta-item">
+            <div class="meta-label">Checked at</div>
+            <div class="meta-value" id="meta-time">—</div>
+          </div>
+        </div>
+      </div>
     </div>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>File</th>
-            <th>Job ID</th>
-            <th>Verdict</th>
-            <th>Confidence</th>
-            <th>Type</th>
-            <th>Time</th>
-          </tr>
-        </thead>
-        <tbody id="history-body">
-          <tr><td colspan="6"><div class="empty-state">// loading history...</div></td></tr>
-        </tbody>
-      </table>
-    </div>
-  </section>
+  </div>
 
-</div><!-- /shell -->
+  <!-- HISTORY TABLE -->
+  <div class="card history-card">
+    <div class="card-header">
+      <div>
+        <div class="card-title">Recent Checks</div>
+        <div class="card-subtitle">Last 20 analyses — updates every 15s</div>
+      </div>
+      <div class="history-controls">
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn fake-filter" data-filter="fake">⚠️ Fake</button>
+        <button class="filter-btn real-filter" data-filter="real">✅ Real</button>
+        <button class="refresh-btn" id="refresh-btn">
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21 12a9 9 0 11-6.219-8.56"/></svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+    <div class="card-body" style="padding-top:0;padding-left:0;padding-right:0;padding-bottom:0;">
+      <div class="history-table-wrap">
+        <table id="history-table">
+          <thead>
+            <tr>
+              <th>File</th>
+              <th>Verdict</th>
+              <th>Confidence</th>
+              <th style="text-align:right">Time</th>
+            </tr>
+          </thead>
+          <tbody id="history-body">
+            <tr class="history-empty-row">
+              <td colspan="4">
+                <div class="history-empty-icon">📋</div>
+                Loading recent checks...
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /main -->
 
 <script>
-// ─── CLOCK ───
-function updateClock() {
-  document.getElementById("clock").textContent =
-    new Date().toLocaleTimeString("en-US", {hour12:false}) + " LOCAL";
-}
-setInterval(updateClock, 1000);
-updateClock();
-
-// ─── SYSTEM STATUS ───
-async function checkStatus() {
-  // API health
-  try {
-    const r = await fetch("/health");
-    const d = await r.json();
-    setStatus("api", "ONLINE", d.uptime || "operational", "ok");
-  } catch {
-    setStatus("api", "OFFLINE", "cannot reach server", "error");
-  }
-
-  // Redis, DB, Worker — from /health/details endpoint
-  try {
-    const r = await fetch("/health/details");
-    const d = await r.json();
-
-    setStatus("redis",
-      d.redis ? "ONLINE" : "OFFLINE",
-      d.redis ? "queue ready" : "connection failed",
-      d.redis ? "ok" : "error"
-    );
-    setStatus("db",
-      d.database ? "ONLINE" : "OFFLINE",
-      d.database ? "mysql connected" : "connection failed",
-      d.database ? "ok" : "error"
-    );
-    setStatus("worker",
-      d.worker ? "RUNNING" : "IDLE",
-      d.worker ? "gpu inference ready" : "worker not detected",
-      d.worker ? "ok" : "warn"
-    );
-  } catch {
-    // If endpoint doesn't exist yet, show graceful fallback
-    setStatus("redis",  "UNKNOWN", "endpoint not found", "warn");
-    setStatus("db",     "UNKNOWN", "endpoint not found", "warn");
-    setStatus("worker", "UNKNOWN", "endpoint not found", "warn");
-  }
-}
-
-function setStatus(key, value, sub, state) {
-  const valEl = document.getElementById(`val-${key}`);
-  const subEl = document.getElementById(`sub-${key}`);
-  const indEl = document.getElementById(`ind-${key}`);
-
-  valEl.textContent = value;
-  subEl.textContent = sub;
-  indEl.className = `sc-indicator ${state}`;
-
-  valEl.className = "sc-value " + ({
-    ok: "green", error: "red", warn: "cyan", checking: "muted"
-  }[state] || "muted");
-}
-
-checkStatus();
-setInterval(checkStatus, 15000); // re-check every 15s
-
-// ─── FILE UPLOAD ───
-const dropZone   = document.getElementById("drop-zone");
-const fileInput  = document.getElementById("file-input");
-const uploadBtn  = document.getElementById("upload-btn");
-const previewBox = document.getElementById("preview-box");
-
 let selectedFile = null;
-let pollingTimer = null;
+let currentJobId = null;
+let pollTimer    = null;
+let activeFilter = "all";
+let allJobs      = [];
 
-fileInput.addEventListener("change", e => onFileSelected(e.target.files[0]));
+// ── FILE SELECT ──
+const dropZone    = document.getElementById("drop-zone");
+const fileInput   = document.getElementById("file-input");
+const analyzeBtn  = document.getElementById("analyze-btn");
+const filePreview = document.getElementById("file-preview");
+const previewImg  = document.getElementById("preview-img");
+const previewVid  = document.getElementById("preview-video");
 
-dropZone.addEventListener("dragover", e => { e.preventDefault(); dropZone.classList.add("dragover"); });
-dropZone.addEventListener("dragleave", () => dropZone.classList.remove("dragover"));
+fileInput.addEventListener("change", e => { if(e.target.files[0]) selectFile(e.target.files[0]); });
+dropZone.addEventListener("dragover",  e => { e.preventDefault(); dropZone.classList.add("dragover"); });
+dropZone.addEventListener("dragleave", ()  => dropZone.classList.remove("dragover"));
 dropZone.addEventListener("drop", e => {
-  e.preventDefault();
-  dropZone.classList.remove("dragover");
-  if (e.dataTransfer.files[0]) onFileSelected(e.dataTransfer.files[0]);
+  e.preventDefault(); dropZone.classList.remove("dragover");
+  if(e.dataTransfer.files[0]) selectFile(e.dataTransfer.files[0]);
 });
 
-function onFileSelected(file) {
+document.getElementById("remove-btn").addEventListener("click", () => {
+  selectedFile = null;
+  filePreview.classList.remove("show");
+  fileInput.value = "";
+  analyzeBtn.disabled = true;
+  analyzeBtn.textContent = "Select a file to analyze";
+});
+
+function selectFile(file) {
   selectedFile = file;
-  uploadBtn.disabled = false;
-  uploadBtn.textContent = `Analyze "${file.name}"`;
-
-  // Preview
-  if (file.type.startsWith("image/")) {
-    const reader = new FileReader();
-    reader.onload = e => {
-      previewBox.innerHTML = `<img src="${e.target.result}" alt="preview"/>`;
-    };
-    reader.readAsDataURL(file);
+  const isVideo = file.type.startsWith("video/");
+  document.getElementById("preview-name").textContent = file.name;
+  document.getElementById("preview-size").textContent = fmtSize(file.size);
+  if(isVideo) {
+    previewImg.style.display = "none";
+    previewVid.style.display = "flex";
   } else {
-    previewBox.innerHTML = `<span style="color:var(--accent)">🎞 ${file.name}</span>`;
+    previewVid.style.display = "none";
+    previewImg.style.display = "block";
+    const r = new FileReader();
+    r.onload = e => previewImg.src = e.target.result;
+    r.readAsDataURL(file);
   }
-
-  setResultField("r-jobid",     "—");
-  setResultField("r-status",    "—");
-  setResultField("r-verdict",   "—");
-  setResultField("r-confidence","—");
-  document.getElementById("conf-bar").style.width = "0%";
+  filePreview.classList.add("show");
+  analyzeBtn.disabled = false;
+  analyzeBtn.textContent = `Analyze "${trunc(file.name, 26)}"`;
 }
 
-uploadBtn.addEventListener("click", async () => {
-  if (!selectedFile) return;
+function fmtSize(b) { return b < 1048576 ? (b/1024).toFixed(1)+" KB" : (b/1048576).toFixed(1)+" MB"; }
+function trunc(s, n) { return s.length > n ? s.slice(0,n)+"…" : s; }
 
-  uploadBtn.disabled = true;
-  uploadBtn.innerHTML = `<span class="spinner"></span> Uploading...`;
+// ── UPLOAD ──
+analyzeBtn.addEventListener("click", async () => {
+  if(!selectedFile) return;
+  analyzeBtn.disabled = true;
+  analyzeBtn.innerHTML = `<span class="spinner"></span> Uploading...`;
+  document.getElementById("polling-bar").classList.add("active");
 
-  const formData = new FormData();
-  formData.append("file", selectedFile);
+  showResult("analyzing","⏳","Analyzing...","Please wait while we process your file");
+  document.getElementById("meta-file").textContent   = trunc(selectedFile.name, 22);
+  document.getElementById("meta-status").textContent = "Queued";
+  document.getElementById("meta-jobid").textContent  = "—";
+  document.getElementById("meta-time").textContent   = new Date().toLocaleTimeString();
+
+  const form = new FormData();
+  form.append("file", selectedFile);
 
   try {
-    const res = await fetch("/upload/", { method:"POST", body:formData });
+    const res  = await fetch("/upload/", {method:"POST", body:form});
     const data = await res.json();
+    if(!res.ok) throw new Error(data.detail || "Upload failed");
 
-    if (!res.ok) throw new Error(data.detail || "Upload failed");
+    currentJobId = data.job_id;
+    document.getElementById("meta-jobid").textContent = currentJobId.slice(0,8)+"...";
+    analyzeBtn.innerHTML = "⏳ Analyzing...";
 
-    const jobId = data.job_id;
-    setResultField("r-jobid",   jobId.slice(0,8) + "...");
-    setResultField("r-status",  "queued", "queued");
-    setResultField("r-verdict", "waiting...");
-    uploadBtn.textContent = "Analyzing...";
-
-    // Start polling
-    clearInterval(pollingTimer);
-    pollingTimer = setInterval(() => pollStatus(jobId), 2000);
-
+    clearInterval(pollTimer);
+    pollTimer = setInterval(() => pollJob(currentJobId), 2000);
   } catch(e) {
-    uploadBtn.textContent = "Upload failed — try again";
-    uploadBtn.disabled = false;
-    console.error(e);
+    showResult("fake","⚠️","Upload Failed", e.message);
+    analyzeBtn.disabled   = false;
+    analyzeBtn.textContent = "Try again";
+    document.getElementById("polling-bar").classList.remove("active");
   }
 });
 
-async function pollStatus(jobId) {
+async function pollJob(jobId) {
   try {
-    const res = await fetch(`/status/${jobId}`);
+    const res  = await fetch(`/status/${jobId}`);
+    const data = await res.json();
+    document.getElementById("meta-status").textContent =
+      data.status.charAt(0).toUpperCase() + data.status.slice(1);
+
+    if(data.status === "completed") {
+      clearInterval(pollTimer);
+      document.getElementById("polling-bar").classList.remove("active");
+
+      const isFake = (data.result||"").toLowerCase().includes("fake");
+      const conf   = data.confidence ? Math.round(data.confidence * 100) : 0;
+
+      showResult(
+        isFake ? "fake" : "real",
+        isFake ? "⚠️" : "✅",
+        isFake ? "Deepfake Detected" : "Appears Authentic",
+        isFake
+          ? `This media shows signs of AI manipulation — ${conf}% confidence`
+          : `No deepfake indicators found — ${conf}% confidence`
+      );
+
+      const fill = document.getElementById("conf-fill");
+      fill.style.width = `${conf}%`;
+      fill.className   = `conf-fill${isFake ? " fake" : ""}`;
+      document.getElementById("conf-pct").textContent = `${conf}%`;
+
+      analyzeBtn.disabled   = false;
+      analyzeBtn.textContent = "Check another file";
+      loadHistory();
+      loadStats();
+
+    } else if(data.status === "failed") {
+      clearInterval(pollTimer);
+      document.getElementById("polling-bar").classList.remove("active");
+      showResult("fake","❌","Analysis Failed","Something went wrong. Please try again.");
+      analyzeBtn.disabled   = false;
+      analyzeBtn.textContent = "Try again";
+    }
+  } catch(e) { console.error("Poll error:", e); }
+}
+
+function showResult(type, icon, label, desc) {
+  document.getElementById("result-empty").style.display = "none";
+  document.getElementById("result-content").classList.add("show");
+  document.getElementById("verdict-display").className  = `verdict-display ${type}`;
+  document.getElementById("verdict-icon").textContent   = icon;
+  document.getElementById("verdict-label").textContent  = label;
+  document.getElementById("verdict-desc").textContent   = desc;
+}
+
+// ── STATS ──
+async function loadStats() {
+  try {
+    const res  = await fetch("/stats");
     const data = await res.json();
 
-    setResultField("r-status", data.status, data.status);
-
-    if (data.status === "completed") {
-      clearInterval(pollingTimer);
-      const verdict = data.verdict || data.result || "—";
-      const isFake = verdict.toLowerCase().includes("fake");
-      const conf = data.confidence ? Math.round(data.confidence * 100) : 0;
-
-      setResultField("r-verdict",    verdict.toUpperCase(), `completed ${isFake ? "fake" : "real"}`);
-      setResultField("r-confidence", `${conf}%`);
-
-      const bar = document.getElementById("conf-bar");
-      bar.style.width = `${conf}%`;
-      bar.style.background = isFake ? "var(--red)" : "var(--green)";
-
-      uploadBtn.textContent = "Analyze Another File";
-      uploadBtn.disabled = false;
-      loadHistory();
-
-    } else if (data.status === "failed") {
-      clearInterval(pollingTimer);
-      setResultField("r-verdict", "FAILED", "failed");
-      uploadBtn.textContent = "Try Again";
-      uploadBtn.disabled = false;
-    }
-  } catch(e) {
-    console.error("Poll error:", e);
-  }
-}
-
-function setResultField(id, value, cls="") {
-  const el = document.getElementById(id);
-  el.textContent = value;
-  el.className = "val " + cls;
-}
-
-// ─── JOB HISTORY ───
-async function loadHistory() {
-  const tbody = document.getElementById("history-body");
-
-  try {
-    const res = await fetch("/jobs?limit=20");
-    const jobs = await res.json();
-
-    if (!jobs.length) {
-      tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">// no jobs yet</div></td></tr>`;
+    if(data.total_analyzed === 0) {
+      document.getElementById("stat-total").textContent = "0";
+      document.getElementById("stat-conf").textContent  = "—";
+      document.getElementById("stat-fake").textContent  = "—";
       return;
     }
 
-    tbody.innerHTML = jobs.map(job => {
-      const verdict  = job.verdict || job.result || "—";
-      const isFake   = verdict.toLowerCase().includes("fake");
-      const conf     = job.confidence ? Math.round(job.confidence * 100) + "%" : "—";
-      const badgeCls = job.status === "completed" ? (isFake ? "fake" : "real")
-                     : job.status === "queued"    ? "queued"
-                     : job.status === "failed"    ? "failed" : "processing";
-      const badgeTxt = job.status === "completed" ? verdict.toUpperCase() : job.status.toUpperCase();
-      const time     = job.created_at
-        ? new Date(job.created_at).toLocaleTimeString("en-US", {hour12:false})
-        : "—";
-      const mediaType = job.media_type || "image";
+    animateNum("stat-total", data.total_analyzed, "");
+    animateNum("stat-conf",  data.avg_confidence,  "%");
+    animateNum("stat-fake",  data.fake_percentage, "%");
 
-      return `
-        <tr>
-          <td class="td-filename">${job.filename || "—"}</td>
-          <td class="td-id">${(job.job_id||"").slice(0,8)}...</td>
-          <td><span class="badge ${badgeCls}">${badgeTxt}</span></td>
-          <td>${conf}</td>
-          <td><span style="color:var(--muted);font-family:var(--font-mono);font-size:10px">${mediaType}</span></td>
-          <td>${time}</td>
-        </tr>`;
-    }).join("");
-
+    document.getElementById("stat-total").classList.remove("loading");
+    document.getElementById("stat-conf").classList.remove("loading");
+    document.getElementById("stat-fake").classList.remove("loading");
   } catch {
-    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state">// could not load history — is the server running?</div></td></tr>`;
+    // Server not up or /stats not added yet — just hide gracefully
+    document.getElementById("stat-total").textContent = "—";
+    document.getElementById("stat-conf").textContent  = "—";
+    document.getElementById("stat-fake").textContent  = "—";
   }
 }
 
+function animateNum(id, target, suffix) {
+  const el  = document.getElementById(id);
+  const dur = 900;
+  const step = 16;
+  let cur = 0;
+  const inc = target / (dur / step);
+  const t = setInterval(() => {
+    cur += inc;
+    if(cur >= target) { cur = target; clearInterval(t); }
+    el.textContent = Math.round(cur) + suffix;
+  }, step);
+}
+
+// ── HISTORY TABLE ──
+async function loadHistory() {
+  const btn = document.getElementById("refresh-btn");
+  btn.classList.add("spinning");
+  try {
+    const res  = await fetch("/jobs/");
+    const jobs = await res.json();
+    allJobs = jobs;
+    renderHistory(jobs);
+  } catch {
+    document.getElementById("history-body").innerHTML =
+      `<tr class="history-empty-row"><td colspan="4"><div class="history-empty-icon">⚠️</div>Could not reach server</td></tr>`;
+  } finally {
+    btn.classList.remove("spinning");
+  }
+}
+
+function renderHistory(jobs) {
+  const tbody = document.getElementById("history-body");
+
+  const filtered = activeFilter === "all" ? jobs : jobs.filter(j => {
+    const v = (j.result||"").toLowerCase();
+    return activeFilter === "fake" ? v.includes("fake") : v.includes("real");
+  });
+
+  if(!filtered.length) {
+    tbody.innerHTML = `<tr class="history-empty-row"><td colspan="4">
+      <div class="history-empty-icon">📋</div>
+      ${activeFilter === "all" ? "No checks yet — upload a file above" : `No ${activeFilter} results found`}
+    </td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = filtered.map(job => {
+    const isFake   = (job.result||"").toLowerCase().includes("fake");
+    const isQueued = job.status === "queued" || job.status === "processing";
+    const isFailed = job.status === "failed";
+
+    const cls      = isFailed ? "failed" : isQueued ? "queued" : isFake ? "fake" : "real";
+    const icon     = isFailed ? "❌" : isQueued ? "⏳" : isFake ? "⚠️" : "✅";
+    const pill     = isFailed ? "Failed" : isQueued ? "Processing" : isFake ? "Fake" : "Real";
+
+    const conf     = job.confidence ? Math.round(job.confidence * 100) : null;
+    const confBar  = conf !== null
+      ? `<div class="mini-conf">
+           <div class="mini-track"><div class="mini-fill ${isFake?"fake":""}" style="width:${conf}%"></div></div>
+           <div class="mini-pct">${conf}%</div>
+         </div>`
+      : `<span style="color:var(--muted2);font-size:0.75rem;">—</span>`;
+
+    const dt = job.created_at ? new Date(job.created_at) : null;
+    const timeStr = dt
+      ? dt.toLocaleTimeString("en-US",{hour:"2-digit",minute:"2-digit"})
+      : "—";
+    const dateStr = dt
+      ? dt.toLocaleDateString("en-US",{month:"short",day:"numeric"})
+      : "";
+
+    return `<tr>
+      <td>
+        <div class="td-file">
+          <div class="td-file-icon ${cls}">${icon}</div>
+          <div>
+            <div class="td-filename">${trunc(job.filename || "Unknown", 32)}</div>
+            <div class="td-time">${dateStr}</div>
+          </div>
+        </div>
+      </td>
+      <td><span class="verdict-pill ${cls}">${pill}</span></td>
+      <td>${confBar}</td>
+      <td class="td-right" style="color:var(--muted);font-size:0.75rem;">${timeStr}</td>
+    </tr>`;
+  }).join("");
+}
+
+document.querySelectorAll(".filter-btn").forEach(btn => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".filter-btn").forEach(b => b.classList.remove("active"));
+    btn.classList.add("active");
+    activeFilter = btn.dataset.filter;
+    renderHistory(allJobs);
+  });
+});
+
+document.getElementById("refresh-btn").addEventListener("click", loadHistory);
+
+// ── INIT ──
+loadStats();
 loadHistory();
-setInterval(loadHistory, 10000); // auto-refresh every 10s
+setInterval(loadHistory, 15000);
+setInterval(loadStats,   30000);
 </script>
 </body>
 </html>

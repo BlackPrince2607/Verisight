@@ -11,3 +11,4 @@ httpx
 yt-dlp
 pydantic
 aiofiles
+insightface

@@ -4,9 +4,10 @@ import numpy as np
 import torch
 from PIL import Image, UnidentifiedImageError
 from transformers import AutoImageProcessor, AutoModelForImageClassification
+from insightface.app import FaceAnalysis
 
 DEVICE     = "cuda" if torch.cuda.is_available() else "cpu"
-MODEL_NAME = "prithivMLmods/Deep-Fake-Detector-Model"
+MODEL_NAME = "dima806/deepfake_vs_real_image_detection"
 
 print(f"[MODEL] Loading on {DEVICE}...")
 processor = AutoImageProcessor.from_pretrained(MODEL_NAME)
@@ -14,28 +15,32 @@ model     = AutoModelForImageClassification.from_pretrained(MODEL_NAME)
 model.to(DEVICE)
 model.eval()
 print(f"[MODEL] Ready.")
-
-FACE_CASCADE = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml"
-)
-
-
+face_detector = FaceAnalysis(name="buffalo_l")
+face_detector.prepare(ctx_id=0 if DEVICE == "cuda" else -1)
 def extract_face(image: Image.Image) -> Image.Image:
     img_array = np.array(image)
-    gray  = cv2.cvtColor(img_array, cv2.COLOR_RGB2GRAY)
-    faces = FACE_CASCADE.detectMultiScale(
-        gray, scaleFactor=1.1, minNeighbors=5, minSize=(80, 80)
-    )
-    if len(faces) == 0:
+
+    faces = face_detector.get(img_array)
+
+    if not faces:
         return image
-    x, y, w, h = max(faces, key=lambda f: f[2] * f[3])
-    pad = int(0.2 * min(w, h))
-    return image.crop((
-        max(0, x - pad),
-        max(0, y - pad),
-        min(image.width,  x + w + pad),
-        min(image.height, y + h + pad)
-    ))
+
+    # pick the largest face
+    largest_face = max(
+        faces,
+        key=lambda f: (f.bbox[2] - f.bbox[0]) * (f.bbox[3] - f.bbox[1])
+    )
+
+    x1, y1, x2, y2 = map(int, largest_face.bbox)
+
+    pad = int(0.2 * (x2 - x1))
+
+    x1 = max(0, x1 - pad)
+    y1 = max(0, y1 - pad)
+    x2 = min(image.width, x2 + pad)
+    y2 = min(image.height, y2 + pad)
+
+    return image.crop((x1, y1, x2, y2))
 
 
 def run_inference(image: Image.Image) -> tuple[str, float]:

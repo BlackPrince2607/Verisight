@@ -6,8 +6,9 @@ from collections import deque
 from PIL import Image
 from inference import run_inference
 
-FRAME_INTERVAL   = 10
+FRAME_INTERVAL   = 5
 SMOOTHING_WINDOW = 5
+FRAME_BATCH = 5
 
 
 def resolve_stream_url(url: str) -> str:
@@ -77,6 +78,7 @@ async def stream_analysis_loop(url: str, send_callback, stop_event: asyncio.Even
 
     history     = deque(maxlen=SMOOTHING_WINDOW)
     frame_index = 0
+    frame_buffer = []
     analyzed    = 0
 
     try:
@@ -90,20 +92,49 @@ async def stream_analysis_loop(url: str, send_callback, stop_event: asyncio.Even
             if frame_index % FRAME_INTERVAL == 0:
                 try:
                     frame_rgb = Image.fromarray(cv2.cvtColor(frame_bgr, cv2.COLOR_BGR2RGB))
-                    label, confidence = run_inference_on_frame(frame_rgb)
-                    history.append((label, confidence))
-                    smoothed = compute_smoothed_verdict(history)
-                    analyzed += 1
 
-                    frame_b64 = frame_to_base64(frame_bgr)
-                    payload = {
-                        "type":            "result",
-                        "frame":           f"data:image/jpeg;base64,{frame_b64}",
-                        "raw":             {"label": label, "confidence": confidence},
-                        "smoothed":        smoothed,
-                        "frames_analyzed": analyzed,
-                    }
-                    await send_callback(payload)
+                    # store frame instead of analyzing immediately
+                    frame_buffer.append(frame_rgb)
+
+                    # run inference when enough frames collected
+                    if len(frame_buffer) >= FRAME_BATCH:
+
+                        fake_score = 0
+                        real_score = 0
+
+                        for buffered_frame in frame_buffer:
+                            label, confidence = run_inference_on_frame(buffered_frame)
+
+                            if "fake" in label.lower():
+                                fake_score += confidence
+                            else:
+                                real_score += confidence
+
+                        total = fake_score + real_score
+
+                        if total > 0:
+                            fake_ratio = fake_score / total
+                            label = "FAKE" if fake_ratio > 0.5 else "REAL"
+                            confidence = fake_ratio if label == "FAKE" else (real_score / total)
+
+                            history.append((label, confidence))
+
+                        frame_buffer.clear()
+
+                        smoothed = compute_smoothed_verdict(history)
+                        analyzed += 1
+
+                        frame_b64 = frame_to_base64(frame_bgr)
+
+                        payload = {
+                            "type": "result",
+                            "frame": f"data:image/jpeg;base64,{frame_b64}",
+                            "raw": {"label": label, "confidence": confidence},
+                            "smoothed": smoothed,
+                            "frames_analyzed": analyzed,
+                        }
+
+                        await send_callback(payload)
 
                 except Exception as e:
                     print(f"[STREAM] Frame inference error: {e}")
