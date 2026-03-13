@@ -43,6 +43,8 @@ def job_worker_loop():
             print(f"[WORKER] Processing {job_id} ({media_type})")
             start_time = time.time()
 
+            # ── Replace lines 40-55 (the image/video inference block) ──
+
             try:
                 if media_type == "video":
                     from video_processor import run_video_inference
@@ -52,10 +54,21 @@ def job_worker_loop():
                     extra = {
                         "fake_frame_ratio":      agg["fake_frame_ratio"],
                         "total_frames_analyzed": agg["total_frames_analyzed"],
+                        "face_found":            True,   # video always has faces by this point
                     }
                 else:
-                    label, confidence = run_inference_from_path(file_path)
-                    extra = {}
+                    # NEW — result is a dict
+                    result     = run_inference_from_path(file_path)
+                    label      = result["result"]        # 'fake' | 'real' | 'uncertain'
+                    confidence = result["confidence"]
+                    extra = {
+                        "face_found":  result["face_found"],
+                        "freq_score":  result["freq_score"],
+                    }
+
+                    # Log a warning if no face was detected
+                    if not result["face_found"]:
+                        print(f"[WORKER] Warning: no face detected in {job_id}, used full image")
 
                 inference_time = int((time.time() - start_time) * 1000)
                 result_message = {
@@ -66,7 +79,7 @@ def job_worker_loop():
                     "inference_time_ms": inference_time,
                     **extra
                 }
-                print(f"[WORKER] {job_id} → {label} ({confidence}) in {inference_time}ms")
+                print(f"[WORKER] {job_id} → {label} ({confidence:.2%}) in {inference_time}ms")
 
             except Exception as e:
                 print(f"[WORKER] Failed {job_id}: {e}")

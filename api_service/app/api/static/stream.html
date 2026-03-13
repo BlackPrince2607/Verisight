@@ -1,332 +1,749 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8"/>
-  <title>VeriSight — Live Stream Detection</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      background: #0a0a0f;
-      color: #e8e8f0;
-      font-family: monospace;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 40px 20px;
-    }
-    h1 { font-size: 1.8rem; letter-spacing: 0.1em; margin-bottom: 4px; }
-    .sub { color: #555570; font-size: 0.8rem; margin-bottom: 28px; }
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>VeriSight — Live Stream Analysis</title>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:wght@600;700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+:root {
+  --bg:         #0d0f0e;
+  --surface:    #141716;
+  --surface2:   #1c1f1d;
+  --border:     #262b28;
+  --border2:    #313830;
+  --text:       #e8ebe9;
+  --muted:      #6b7570;
+  --muted2:     #4a514d;
+  --green:      #22c55e;
+  --green-dim:  #166534;
+  --green-bg:   #0a1f10;
+  --red:        #ef4444;
+  --red-dim:    #7f1d1d;
+  --red-bg:     #1f0a0a;
+  --amber:      #f59e0b;
+  --amber-bg:   #1f1500;
+  --cyan:       #06b6d4;
+  --cyan-bg:    #061820;
+  --radius:     12px;
+  --radius-sm:  8px;
+  --mono:       'DM Mono', monospace;
+}
 
-    .url-bar {
-      display: flex;
-      gap: 10px;
-      width: 640px;
-      margin-bottom: 16px;
-    }
-    input {
-      flex: 1;
-      background: #13131d;
-      border: 1px solid #1e1e2e;
-      border-radius: 4px;
-      color: #e8e8f0;
-      font-family: monospace;
-      font-size: 0.85rem;
-      padding: 10px 14px;
-      outline: none;
-      transition: border 0.2s;
-    }
-    input:focus { border-color: #00f5a0; }
-    input::placeholder { color: #333355; }
+* { margin:0; padding:0; box-sizing:border-box; }
+html { height:100%; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'DM Sans', sans-serif;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+}
 
-    button {
-      padding: 10px 20px;
-      border: 1px solid #1e1e2e;
-      border-radius: 4px;
-      background: #13131d;
-      color: #e8e8f0;
-      font-family: monospace;
-      cursor: pointer;
-      font-size: 0.85rem;
-      transition: all 0.2s;
-      white-space: nowrap;
-    }
-    button:hover:not(:disabled) { border-color: #00f5a0; color: #00f5a0; }
-    button:disabled { opacity: 0.3; cursor: not-allowed; }
-    button.danger:hover:not(:disabled) { border-color: #ff4060; color: #ff4060; }
+/* ── NAV ── */
+nav {
+  height: 56px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--border);
+  background: var(--surface);
+  position: sticky; top: 0; z-index: 100;
+}
+.nav-logo { font-family: 'Bricolage Grotesque', sans-serif; font-size: 1.1rem; font-weight: 800; letter-spacing: -0.03em; color: var(--text); text-decoration: none; }
+.nav-logo span { color: var(--green); }
+.nav-back { display: flex; align-items: center; gap: 6px; font-size: 0.78rem; color: var(--muted); text-decoration: none; padding: 5px 10px; border-radius: 6px; border: 1px solid var(--border); transition: all 0.15s; }
+.nav-back:hover { border-color: var(--border2); color: var(--text); }
+.nav-center { display: flex; align-items: center; gap: 8px; }
 
-    /* Feed */
-    .feed {
-      position: relative;
-      width: 640px;
-      height: 400px;
-      background: #111;
-      border: 1px solid #1e1e2e;
-      border-radius: 6px;
-      overflow: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    #stream-frame {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-      display: none;
-    }
-    .placeholder {
-      color: #333355;
-      font-size: 0.85rem;
-      text-align: center;
-      line-height: 2;
-    }
+/* Status pill */
+.status-pill {
+  display: flex; align-items: center; gap: 6px;
+  padding: 4px 12px; border-radius: 20px;
+  font-size: 0.72rem; font-weight: 600;
+  font-family: var(--mono);
+  border: 1px solid var(--border);
+  background: var(--surface2);
+  color: var(--muted);
+  transition: all 0.3s;
+}
+.status-pill.connecting { border-color: var(--amber); color: var(--amber); background: var(--amber-bg); }
+.status-pill.live       { border-color: var(--green); color: var(--green); background: var(--green-bg); }
+.status-pill.error      { border-color: var(--red);   color: var(--red);   background: var(--red-bg); }
+.status-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.status-pill.live .status-dot { animation: pulse 1.2s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:1;} 50%{opacity:0.2;} }
 
-    /* Verdict overlay */
-    .verdict-overlay {
-      position: absolute;
-      top: 14px; left: 14px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .verdict-badge {
-      padding: 6px 16px;
-      border-radius: 4px;
-      font-size: 1rem;
-      font-weight: bold;
-      letter-spacing: 0.12em;
-      transition: all 0.3s;
-    }
-    .verdict-badge.FAKE { background: rgba(255,64,96,0.9); color: white; }
-    .verdict-badge.REAL { background: rgba(0,245,160,0.9); color: #0a0a0f; }
-    .verdict-badge.WARMUP { background: rgba(80,80,120,0.9); color: white; }
+/* ── LAYOUT ── */
+.layout {
+  display: grid;
+  grid-template-columns: 1fr 340px;
+  grid-template-rows: auto 1fr;
+  height: calc(100vh - 56px);
+  gap: 0;
+}
 
-    .conf-badge {
-      background: rgba(0,0,0,0.6);
-      padding: 6px 12px;
-      border-radius: 4px;
-      font-size: 0.85rem;
-      color: #e8e8f0;
-    }
+/* ── MAIN FEED ── */
+.feed-col {
+  display: flex; flex-direction: column;
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+}
 
-    /* Confidence bar */
-    .bar-wrap {
-      position: absolute;
-      bottom: 0; left: 0; right: 0;
-      height: 4px;
-      background: rgba(255,255,255,0.05);
-    }
-    .bar-fill {
-      height: 100%;
-      transition: width 0.4s ease, background 0.4s ease;
-    }
+/* Video display */
+.video-wrap {
+  flex: 1;
+  background: #080a09;
+  position: relative;
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden;
+  min-height: 0;
+}
 
-    /* Stats */
-    .stats {
-      width: 640px;
-      margin-top: 14px;
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 10px;
-    }
-    .stat {
-      background: #13131d;
-      border: 1px solid #1e1e2e;
-      border-radius: 4px;
-      padding: 12px;
-      text-align: center;
-    }
-    .stat-val { font-size: 1.1rem; font-weight: bold; color: #00f5a0; }
-    .stat-label { font-size: 0.65rem; color: #555570; margin-top: 4px; letter-spacing: 0.05em; }
+#stream-canvas {
+  max-width: 100%; max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
 
-    /* Log */
-    #log {
-      width: 640px;
-      margin-top: 14px;
-      background: #13131d;
-      border: 1px solid #1e1e2e;
-      border-radius: 4px;
-      padding: 12px;
-      font-size: 0.72rem;
-      color: #555570;
-      height: 110px;
-      overflow-y: auto;
-    }
-    #log .err { color: #ff4060; }
-    #log .ok  { color: #00f5a0; }
+.video-placeholder {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 14px; color: var(--muted2); text-align: center;
+}
+.video-placeholder-icon {
+  width: 64px; height: 64px; border-radius: 16px;
+  border: 2px dashed var(--border2);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.6rem; color: var(--muted2);
+}
+.video-placeholder p { font-size: 0.82rem; line-height: 1.5; }
 
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.3} }
-    .live-dot {
-      display: inline-block;
-      width: 8px; height: 8px;
-      border-radius: 50%;
-      background: #ff4060;
-      animation: pulse 1s infinite;
-      margin-right: 6px;
-    }
-  </style>
+/* Overlay badges on video */
+.video-overlay {
+  position: absolute; inset: 0; pointer-events: none;
+}
+.overlay-verdict {
+  position: absolute; top: 14px; left: 14px;
+  display: none;
+  align-items: center; gap: 8px;
+  padding: 7px 14px; border-radius: 8px;
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1rem; font-weight: 700;
+  backdrop-filter: blur(8px);
+  border: 1px solid transparent;
+  transition: all 0.3s;
+}
+.overlay-verdict.show { display: flex; }
+.overlay-verdict.real { background: rgba(10,31,16,0.9); border-color: var(--green); color: var(--green); }
+.overlay-verdict.fake { background: rgba(31,10,10,0.9); border-color: var(--red);   color: var(--red); }
+.overlay-verdict.uncertain { background: rgba(31,21,0,0.9); border-color: var(--amber); color: var(--amber); }
+
+.overlay-frames {
+  position: absolute; top: 14px; right: 14px;
+  font-family: var(--mono); font-size: 0.72rem; color: var(--muted);
+  background: rgba(13,15,14,0.8); padding: 4px 9px; border-radius: 6px;
+  border: 1px solid var(--border);
+  display: none;
+}
+.overlay-frames.show { display: block; }
+
+.overlay-conf-bar {
+  position: absolute; bottom: 0; left: 0; right: 0;
+  height: 3px; background: transparent;
+}
+.overlay-conf-fill {
+  height: 100%; width: 0%;
+  transition: width 0.6s ease, background 0.3s;
+  background: var(--green);
+}
+
+/* ── INPUT BAR ── */
+.input-bar {
+  padding: 14px 16px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  display: flex; flex-direction: column; gap: 10px;
+}
+
+.url-row { display: flex; gap: 8px; }
+
+.url-input {
+  flex: 1;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  font-family: var(--mono); font-size: 0.8rem;
+  color: var(--text);
+  outline: none;
+  transition: border-color 0.15s;
+}
+.url-input::placeholder { color: var(--muted2); }
+.url-input:focus { border-color: var(--border2); }
+
+.btn {
+  padding: 9px 16px; border-radius: var(--radius-sm);
+  font-family: 'DM Sans', sans-serif; font-size: 0.82rem; font-weight: 600;
+  cursor: pointer; border: none; transition: all 0.15s;
+  display: flex; align-items: center; gap: 6px; white-space: nowrap;
+}
+.btn-start { background: var(--green); color: #0a1a0d; }
+.btn-start:hover { background: #16a34a; transform: translateY(-1px); }
+.btn-start:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+.btn-stop { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-dim); display: none; }
+.btn-stop:hover { background: #2a0f0f; }
+.btn-stop.show { display: flex; }
+
+/* Quick source buttons */
+.source-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+.source-chip {
+  padding: 4px 10px; border-radius: 6px;
+  font-size: 0.7rem; font-weight: 500;
+  border: 1px solid var(--border); background: transparent;
+  color: var(--muted); cursor: pointer; transition: all 0.15s;
+  font-family: var(--mono);
+}
+.source-chip:hover { border-color: var(--border2); color: var(--text); background: var(--surface2); }
+
+/* ── SIDEBAR ── */
+.sidebar {
+  display: flex; flex-direction: column;
+  overflow: hidden; background: var(--surface);
+}
+
+/* Live metrics */
+.metrics-section {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.section-label {
+  font-size: 0.63rem; font-weight: 600; text-transform: uppercase;
+  letter-spacing: 0.08em; color: var(--muted2); margin-bottom: 12px;
+}
+
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.metric-card {
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 11px 12px;
+}
+.metric-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 5px; }
+.metric-value {
+  font-family: 'Bricolage Grotesque', sans-serif;
+  font-size: 1.3rem; font-weight: 700; letter-spacing: -0.02em;
+  color: var(--text);
+}
+.metric-value.green { color: var(--green); }
+.metric-value.red   { color: var(--red); }
+.metric-value.amber { color: var(--amber); }
+.metric-value.cyan  { color: var(--cyan); }
+.metric-sub { font-size: 0.62rem; color: var(--muted2); margin-top: 2px; font-family: var(--mono); }
+
+/* Confidence gauge */
+.conf-gauge-wrap {
+  margin-top: 12px;
+  background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 12px;
+}
+.conf-gauge-header { display: flex; justify-content: space-between; margin-bottom: 8px; }
+.conf-gauge-label { font-size: 0.65rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+.conf-gauge-val { font-family: var(--mono); font-size: 0.75rem; font-weight: 600; color: var(--text); }
+.conf-track {
+  height: 8px; background: var(--bg);
+  border-radius: 20px; overflow: hidden;
+  border: 1px solid var(--border);
+}
+.conf-fill {
+  height: 100%; border-radius: 20px;
+  transition: width 0.5s cubic-bezier(0.4,0,0.2,1), background 0.3s;
+  background: var(--green);
+  width: 0%;
+}
+
+/* Smoothing window */
+.smooth-section {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+.smooth-dots { display: flex; gap: 5px; margin-top: 10px; }
+.smooth-dot {
+  flex: 1; height: 28px; border-radius: 5px;
+  background: var(--surface2); border: 1px solid var(--border);
+  transition: all 0.3s;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 0.6rem; font-family: var(--mono); color: var(--muted2);
+}
+.smooth-dot.real  { background: var(--green-bg); border-color: var(--green-dim); color: var(--green); }
+.smooth-dot.fake  { background: var(--red-bg);   border-color: var(--red-dim);   color: var(--red); }
+.smooth-dot.uncertain { background: var(--amber-bg); border-color: #78350f; color: var(--amber); }
+
+/* Event log */
+.log-section {
+  flex: 1; display: flex; flex-direction: column;
+  overflow: hidden; padding: 14px 16px;
+}
+.log-list {
+  flex: 1; overflow-y: auto;
+  display: flex; flex-direction: column; gap: 5px;
+  margin-top: 10px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+.log-item {
+  display: flex; align-items: flex-start; gap: 8px;
+  padding: 7px 9px; border-radius: 6px;
+  background: var(--surface2); border: 1px solid var(--border);
+  animation: logIn 0.2s ease both;
+}
+@keyframes logIn { from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:translateY(0);} }
+.log-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+.log-dot.real     { background: var(--green); }
+.log-dot.fake     { background: var(--red); }
+.log-dot.uncertain{ background: var(--amber); }
+.log-dot.system   { background: var(--cyan); }
+.log-text { flex: 1; font-size: 0.73rem; line-height: 1.4; color: var(--muted); }
+.log-text strong { color: var(--text); font-weight: 500; }
+.log-time { font-family: var(--mono); font-size: 0.62rem; color: var(--muted2); flex-shrink: 0; margin-top: 1px; }
+
+/* Empty log */
+.log-empty { text-align: center; padding: 32px 16px; color: var(--muted2); font-size: 0.78rem; }
+.log-empty-icon { font-size: 1.4rem; margin-bottom: 8px; opacity: 0.3; }
+
+/* ── RESPONSIVE ── */
+@media(max-width: 768px) {
+  .layout { grid-template-columns: 1fr; grid-template-rows: auto auto; height: auto; }
+  .feed-col { border-right: none; border-bottom: 1px solid var(--border); }
+  .video-wrap { min-height: 240px; }
+  .sidebar { max-height: 420px; }
+}
+
+.spinner { width: 13px; height: 13px; border: 2px solid rgba(255,255,255,0.2); border-top-color: currentColor; border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
 </head>
 <body>
-  <h1>VERI<span style="color:#00f5a0">SIGHT</span></h1>
-  <p class="sub">Live Stream Deepfake Detection</p>
 
-  <div class="url-bar">
-    <input id="url-input" type="text"
-      placeholder="YouTube URL / rtmp://... / rtsp://192.168.x.x / http://...m3u8"/>
-    <button id="btn-start">▶ Analyze</button>
-    <button id="btn-stop" class="danger" disabled>■ Stop</button>
+<!-- NAV -->
+<nav>
+  <a href="/static/index.html" class="nav-back">← Dashboard</a>
+  <div class="nav-center">
+    <a href="/" class="nav-logo">Veri<span>Sight</span></a>
+  </div>
+  <div class="status-pill" id="status-pill">
+    <div class="status-dot"></div>
+    <span id="status-text">Idle</span>
+  </div>
+</nav>
+
+<!-- LAYOUT -->
+<div class="layout">
+
+  <!-- LEFT: VIDEO FEED + INPUT -->
+  <div class="feed-col">
+
+    <!-- Video -->
+    <div class="video-wrap" id="video-wrap">
+      <div class="video-placeholder" id="video-placeholder">
+        <div class="video-placeholder-icon">📡</div>
+        <p>Enter a stream URL below<br/>to begin live analysis</p>
+      </div>
+
+      <canvas id="stream-canvas" style="display:none"></canvas>
+
+      <!-- Overlays -->
+      <div class="video-overlay">
+        <div class="overlay-verdict" id="overlay-verdict">
+          <span id="overlay-icon"></span>
+          <span id="overlay-label"></span>
+        </div>
+        <div class="overlay-frames" id="overlay-frames">0 frames</div>
+        <div class="overlay-conf-bar">
+          <div class="overlay-conf-fill" id="overlay-conf-fill"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input bar -->
+    <div class="input-bar">
+      <div class="url-row">
+        <input
+          type="text"
+          class="url-input"
+          id="stream-url"
+          placeholder="YouTube URL, rtmp://, rtsp://, or IP camera address"
+        />
+        <button class="btn btn-start" id="btn-start">
+          ▶ Start
+        </button>
+        <button class="btn btn-stop" id="btn-stop">
+          ⏹ Stop
+        </button>
+      </div>
+      <div class="source-chips">
+        <span class="source-label" style="font-size:0.65rem;color:var(--muted2);align-self:center;">Examples:</span>
+        <button class="source-chip" data-url="https://www.youtube.com/watch?v=dQw4w9WgXcQ">YouTube</button>
+        <button class="source-chip" data-url="rtmp://live.example.com/stream">RTMP</button>
+        <button class="source-chip" data-url="rtsp://192.168.1.100/stream">RTSP</button>
+        <button class="source-chip" data-url="http://192.168.1.100:8080/video">IP Cam</button>
+      </div>
+    </div>
+
   </div>
 
-  <div class="feed">
-    <img id="stream-frame" alt="stream"/>
-    <div class="placeholder" id="placeholder">
-      Paste a stream URL above<br/>
-      <span style="color:#222240">YouTube · RTMP · RTSP · HLS</span>
+  <!-- RIGHT: SIDEBAR -->
+  <div class="sidebar">
+
+    <!-- Live metrics -->
+    <div class="metrics-section">
+      <div class="section-label">Live Metrics</div>
+      <div class="metric-grid">
+        <div class="metric-card">
+          <div class="metric-label">Verdict</div>
+          <div class="metric-value" id="m-verdict">—</div>
+          <div class="metric-sub" id="m-verdict-sub">waiting...</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Frames</div>
+          <div class="metric-value cyan" id="m-frames">0</div>
+          <div class="metric-sub">analyzed</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Fake Ratio</div>
+          <div class="metric-value" id="m-ratio">—</div>
+          <div class="metric-sub">of all frames</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Latency</div>
+          <div class="metric-value amber" id="m-latency">—</div>
+          <div class="metric-sub">ms avg</div>
+        </div>
+      </div>
+
+      <!-- Confidence gauge -->
+      <div class="conf-gauge-wrap">
+        <div class="conf-gauge-header">
+          <div class="conf-gauge-label">Model Confidence</div>
+          <div class="conf-gauge-val" id="gauge-val">—</div>
+        </div>
+        <div class="conf-track">
+          <div class="conf-fill" id="conf-fill"></div>
+        </div>
+      </div>
     </div>
-    <div class="verdict-overlay">
-      <div class="verdict-badge WARMUP" id="verdict" style="display:none">WARMING UP</div>
-      <div class="conf-badge" id="conf-badge" style="display:none">—</div>
+
+    <!-- Smoothing window -->
+    <div class="smooth-section">
+      <div class="section-label">Last 5 Frames</div>
+      <div class="smooth-dots" id="smooth-dots">
+        <div class="smooth-dot">—</div>
+        <div class="smooth-dot">—</div>
+        <div class="smooth-dot">—</div>
+        <div class="smooth-dot">—</div>
+        <div class="smooth-dot">—</div>
+      </div>
     </div>
-    <div class="bar-wrap">
-      <div class="bar-fill" id="bar" style="width:0%;background:#333355"></div>
+
+    <!-- Event log -->
+    <div class="log-section">
+      <div class="section-label">Event Log</div>
+      <div class="log-list" id="log-list">
+        <div class="log-empty">
+          <div class="log-empty-icon">📋</div>
+          Events will appear here once streaming starts
+        </div>
+      </div>
     </div>
+
   </div>
+</div>
 
-  <div class="stats">
-    <div class="stat">
-      <div class="stat-val" id="s-verdict">—</div>
-      <div class="stat-label">VERDICT</div>
+<script>
+// ── STATE ──
+let ws           = null;
+let isStreaming  = false;
+let frameCount   = 0;
+let fakeCount    = 0;
+let latencies    = [];
+let lastFrameTime = null;
+let frameWindow  = [];   // last 5 verdicts for smoothing display
+const MAX_LOG    = 50;
+let logItems     = [];
+
+// ── ELEMENTS ──
+const btnStart      = document.getElementById("btn-start");
+const btnStop       = document.getElementById("btn-stop");
+const urlInput      = document.getElementById("stream-url");
+const statusPill    = document.getElementById("status-pill");
+const statusText    = document.getElementById("status-text");
+const canvas        = document.getElementById("stream-canvas");
+const placeholder   = document.getElementById("video-placeholder");
+const ctx           = canvas.getContext("2d");
+
+// ── STATUS HELPERS ──
+function setStatus(state, text) {
+  statusPill.className = `status-pill ${state}`;
+  statusText.textContent = text;
+}
+
+// ── LOG ──
+function addLog(type, message) {
+  const empty = document.querySelector(".log-empty");
+  if(empty) empty.remove();
+
+  const time = new Date().toLocaleTimeString("en-US", {hour:"2-digit", minute:"2-digit", second:"2-digit"});
+  const item = { type, message, time };
+  logItems.unshift(item);
+  if(logItems.length > MAX_LOG) logItems.pop();
+
+  renderLog();
+}
+
+function renderLog() {
+  const list = document.getElementById("log-list");
+  list.innerHTML = logItems.map(item => `
+    <div class="log-item">
+      <div class="log-dot ${item.type}"></div>
+      <div class="log-text">${item.message}</div>
+      <div class="log-time">${item.time}</div>
     </div>
-    <div class="stat">
-      <div class="stat-val" id="s-conf">—</div>
-      <div class="stat-label">CONFIDENCE</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val" id="s-fake-ratio">—</div>
-      <div class="stat-label">FAKE RATIO</div>
-    </div>
-    <div class="stat">
-      <div class="stat-val" id="s-frames">0</div>
-      <div class="stat-label">FRAMES ANALYZED</div>
-    </div>
-  </div>
+  `).join("");
+}
 
-  <div id="log">// waiting for stream...</div>
+// ── FRAME WINDOW (last 5) ──
+function updateFrameWindow(verdict, conf) {
+  frameWindow.push({ verdict, conf });
+  if(frameWindow.length > 5) frameWindow.shift();
 
-  <script>
-    const urlInput   = document.getElementById("url-input");
-    const btnStart   = document.getElementById("btn-start");
-    const btnStop    = document.getElementById("btn-stop");
-    const frameImg   = document.getElementById("stream-frame");
-    const placeholder= document.getElementById("placeholder");
-    const verdictEl  = document.getElementById("verdict");
-    const confBadge  = document.getElementById("conf-badge");
-    const barEl      = document.getElementById("bar");
-    const logEl      = document.getElementById("log");
+  const dots = document.querySelectorAll(".smooth-dot");
+  dots.forEach((dot, i) => {
+    const frame = frameWindow[i];
+    if(!frame) {
+      dot.className = "smooth-dot";
+      dot.textContent = "—";
+      return;
+    }
+    const pct = Math.round(frame.conf * 100);
+    dot.className = `smooth-dot ${frame.verdict}`;
+    dot.textContent = `${pct}%`;
+  });
+}
 
-    let ws = null;
+// ── DRAW FRAME ON CANVAS ──
+function drawFrame(base64Data) {
+  const img = new Image();
+  img.onload = () => {
+    canvas.width  = img.width;
+    canvas.height = img.height;
+    ctx.drawImage(img, 0, 0);
+  };
+  img.src = base64Data;
+}
 
-    function log(msg, cls = "") {
-      const line = document.createElement("div");
-      if (cls) line.className = cls;
-      line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
-      logEl.appendChild(line);
-      logEl.scrollTop = logEl.scrollHeight;
+// ── UPDATE METRICS ──
+function updateMetrics(data) {
+  const raw      = data.raw || {};
+  const smoothed = data.smoothed || {};
+  const verdict  = smoothed.verdict || raw.result || "uncertain";
+  const conf     = smoothed.confidence ?? raw.confidence ?? 0;
+  const confPct  = Math.round(conf * 100);
+  const frames   = data.frames_analyzed || frameCount;
+
+  frameCount = frames;
+  if(verdict === "fake") fakeCount++;
+
+  // Latency
+  const now = Date.now();
+  if(lastFrameTime) {
+    latencies.push(now - lastFrameTime);
+    if(latencies.length > 10) latencies.shift();
+  }
+  lastFrameTime = now;
+  const avgLatency = latencies.length
+    ? Math.round(latencies.reduce((a,b)=>a+b,0) / latencies.length)
+    : null;
+
+  // Fake ratio
+  const fakeRatio = frameCount > 0 ? Math.round((fakeCount / frameCount) * 100) : 0;
+
+  // Update metric cards
+  const mVerdict = document.getElementById("m-verdict");
+  mVerdict.textContent = verdict === "uncertain" ? "?" : verdict.toUpperCase();
+  mVerdict.className = `metric-value ${verdict === "fake" ? "red" : verdict === "real" ? "green" : "amber"}`;
+  document.getElementById("m-verdict-sub").textContent = `${confPct}% confident`;
+
+  document.getElementById("m-frames").textContent = frames;
+
+  const ratioEl = document.getElementById("m-ratio");
+  ratioEl.textContent = `${fakeRatio}%`;
+  ratioEl.className = `metric-value ${fakeRatio > 50 ? "red" : fakeRatio > 20 ? "amber" : "green"}`;
+
+  document.getElementById("m-latency").textContent = avgLatency ? `${avgLatency}` : "—";
+
+  // Confidence gauge
+  document.getElementById("gauge-val").textContent = `${confPct}%`;
+  const fill = document.getElementById("conf-fill");
+  fill.style.width = `${confPct}%`;
+  fill.style.background = verdict === "fake" ? "var(--red)" : verdict === "uncertain" ? "var(--amber)" : "var(--green)";
+
+  // Video overlay
+  const overlayVerdict = document.getElementById("overlay-verdict");
+  const overlayIcon    = document.getElementById("overlay-icon");
+  const overlayLabel   = document.getElementById("overlay-label");
+  overlayVerdict.className = `overlay-verdict show ${verdict}`;
+  overlayIcon.textContent  = verdict === "fake" ? "⚠" : verdict === "real" ? "✓" : "?";
+  overlayLabel.textContent = verdict === "fake"
+    ? `Deepfake — ${confPct}%`
+    : verdict === "real"
+    ? `Authentic — ${confPct}%`
+    : `Uncertain — ${confPct}%`;
+
+  const confBar = document.getElementById("overlay-conf-fill");
+  confBar.style.width      = `${confPct}%`;
+  confBar.style.background = verdict === "fake" ? "var(--red)" : verdict === "real" ? "var(--green)" : "var(--amber)";
+
+  document.getElementById("overlay-frames").textContent = `${frames} frames`;
+  document.getElementById("overlay-frames").classList.add("show");
+
+  // Frame window dots
+  updateFrameWindow(verdict, conf);
+
+  // Log significant events
+  if(verdict === "fake" && confPct >= 80) {
+    addLog("fake", `<strong>High-confidence fake detected</strong> — ${confPct}% on frame ${frames}`);
+  } else if(verdict === "real" && confPct >= 90) {
+    addLog("real", `Frame ${frames} appears authentic — ${confPct}%`);
+  } else if(verdict === "uncertain") {
+    addLog("uncertain", `Frame ${frames} inconclusive — ${confPct}%`);
+  }
+}
+
+// ── START STREAM ──
+btnStart.addEventListener("click", startStream);
+urlInput.addEventListener("keydown", e => { if(e.key === "Enter") startStream(); });
+
+function startStream() {
+  const url = urlInput.value.trim();
+  if(!url) {
+    urlInput.style.borderColor = "var(--red)";
+    setTimeout(() => urlInput.style.borderColor = "", 1500);
+    return;
+  }
+
+  if(ws) { ws.close(); ws = null; }
+
+  // Reset state
+  frameCount   = 0;
+  fakeCount    = 0;
+  latencies    = [];
+  lastFrameTime = null;
+  frameWindow  = [];
+  logItems     = [];
+
+  document.getElementById("m-frames").textContent  = "0";
+  document.getElementById("m-ratio").textContent   = "—";
+  document.getElementById("m-latency").textContent = "—";
+  document.getElementById("m-verdict").textContent = "—";
+  document.getElementById("gauge-val").textContent = "—";
+  document.getElementById("conf-fill").style.width = "0%";
+  document.getElementById("overlay-verdict").className = "overlay-verdict";
+  document.getElementById("overlay-frames").className  = "overlay-frames";
+  document.getElementById("log-list").innerHTML = `<div class="log-empty"><div class="log-empty-icon">📋</div>Connecting...</div>`;
+
+  // Reset dots
+  document.querySelectorAll(".smooth-dot").forEach(d => {
+    d.className = "smooth-dot"; d.textContent = "—";
+  });
+
+  setStatus("connecting", "Connecting...");
+  btnStart.disabled = true;
+  btnStart.innerHTML = `<span class="spinner"></span> Connecting`;
+
+  const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+  const wsUrl    = `${protocol}//${location.host}/ws/stream`;
+
+  ws = new WebSocket(wsUrl);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ type: "start", url }));
+    setStatus("connecting", "Starting...");
+    addLog("system", `<strong>Connecting</strong> to stream: ${url.length > 50 ? url.slice(0,50)+"…" : url}`);
+  };
+
+  ws.onmessage = (event) => {
+    const data = JSON.parse(event.data);
+
+    if(data.type === "started") {
+      setStatus("live", "Live");
+      btnStart.style.display = "none";
+      btnStop.classList.add("show");
+      placeholder.style.display = "none";
+      canvas.style.display = "block";
+      addLog("system", "<strong>Stream started</strong> — analysis running");
+      return;
     }
 
-    function updateUI(data) {
-      const { verdict, confidence, fake_ratio } = data.smoothed;
-      const pct = Math.round(confidence * 100);
-      const fakeRatioPct = Math.round((fake_ratio || 0) * 100);
-
-      // Frame snapshot
-      if (data.frame) {
-        frameImg.src = data.frame;
-        frameImg.style.display = "block";
-        placeholder.style.display = "none";
-      }
-
-      // Verdict badge
-      verdictEl.style.display = "block";
-      confBadge.style.display = "block";
-      verdictEl.textContent = verdict;
-      verdictEl.className = "verdict-badge " + (
-        verdict === "FAKE" ? "FAKE" :
-        verdict === "REAL" ? "REAL" : "WARMUP"
-      );
-      confBadge.textContent = `${pct}% confident`;
-
-      // Bar
-      barEl.style.width = `${pct}%`;
-      barEl.style.background = verdict === "FAKE" ? "#ff4060" : "#00f5a0";
-
-      // Stats
-      document.getElementById("s-verdict").textContent = verdict;
-      document.getElementById("s-verdict").style.color =
-        verdict === "FAKE" ? "#ff4060" : "#00f5a0";
-      document.getElementById("s-conf").textContent = `${pct}%`;
-      document.getElementById("s-fake-ratio").textContent = `${fakeRatioPct}%`;
-      document.getElementById("s-frames").textContent = data.frames_analyzed;
+    if(data.type === "result") {
+      if(data.frame) drawFrame(data.frame);
+      updateMetrics(data);
+      return;
     }
 
-    function startStream() {
-      const url = urlInput.value.trim();
-      if (!url) { log("Please enter a stream URL", "err"); return; }
-
-      ws = new WebSocket(`ws://${window.location.host}/ws/stream`);
-
-      ws.onopen = () => {
-        log(`Connecting to stream: ${url}`, "ok");
-        ws.send(JSON.stringify({ type: "start", url }));
-        btnStart.disabled = true;
-        btnStop.disabled = false;
-        urlInput.disabled = true;
-      };
-
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "result") {
-          updateUI(data);
-          log(`${data.smoothed.verdict} — ${Math.round(data.smoothed.confidence*100)}% (raw: ${data.raw.label} ${Math.round(data.raw.confidence*100)}%)`);
-        } else if (data.type === "status") {
-          log(data.message, "ok");
-        } else if (data.type === "error") {
-          log(`ERROR: ${data.message}`, "err");
-        }
-      };
-
-      ws.onclose = () => {
-        log("Stream disconnected");
-        resetUI();
-      };
-
-      ws.onerror = () => {
-        log("WebSocket error", "err");
-        resetUI();
-      };
+    if(data.type === "error") {
+      setStatus("error", "Error");
+      addLog("system", `<strong>Error:</strong> ${data.message || "Stream failed"}`);
+      stopStream();
+      return;
     }
 
-    function stopStream() {
-      if (ws) {
-        ws.send(JSON.stringify({ type: "stop" }));
-        ws.close();
-      }
-      resetUI();
-      log("Stream stopped");
+    if(data.type === "stopped") {
+      addLog("system", "<strong>Stream ended</strong>");
+      stopStream();
+      return;
     }
+  };
 
-    function resetUI() {
-      btnStart.disabled = false;
-      btnStop.disabled = true;
-      urlInput.disabled = false;
+  ws.onerror = () => {
+    setStatus("error", "Connection failed");
+    addLog("system", "<strong>WebSocket error</strong> — could not connect");
+    stopStream();
+  };
+
+  ws.onclose = () => {
+    if(isStreaming) {
+      setStatus("error", "Disconnected");
+      addLog("system", "<strong>Connection closed</strong>");
+      stopStream();
     }
+  };
 
-    btnStart.addEventListener("click", startStream);
-    btnStop.addEventListener("click", stopStream);
+  isStreaming = true;
+}
 
-    // Allow Enter key to start
-    urlInput.addEventListener("keydown", e => {
-      if (e.key === "Enter") startStream();
-    });
-  </script>
+// ── STOP STREAM ──
+btnStop.addEventListener("click", () => {
+  if(ws) {
+    ws.send(JSON.stringify({ type: "stop" }));
+  }
+  stopStream();
+  addLog("system", "<strong>Stream stopped</strong> by user");
+});
+
+function stopStream() {
+  isStreaming = false;
+  if(ws) { ws.close(); ws = null; }
+
+  setStatus("idle", "Idle");
+  btnStart.disabled = false;
+  btnStart.innerHTML = "▶ Start";
+  btnStart.style.display = "";
+  btnStop.classList.remove("show");
+}
+
+// ── SOURCE CHIPS ──
+document.querySelectorAll(".source-chip").forEach(chip => {
+  chip.addEventListener("click", () => {
+    urlInput.value = chip.dataset.url;
+    urlInput.focus();
+  });
+});
+</script>
 </body>
 </html>
